@@ -38,6 +38,7 @@ SUPPORTED_ENTITIES: dict[str, dict[str, int]] = {
         "GlobalId": 0,
         "RelatingSpace": 4,
         "RelatedBuildingElement": 5,
+        "InternalOrExternalBoundary": 8,
     },
     "IFCRELDEFINESBYPROPERTIES": {
         "GlobalId": 0,

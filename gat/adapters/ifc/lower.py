@@ -234,11 +234,29 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         filler_ref = attr(rel, "RelatedBuildingElement")
         if isinstance(opening_ref, Ref) and isinstance(filler_ref, Ref):
             _edge(RelKind.FILLS, filler_ref, opening_ref, rel.step_id)
+    external_elements: set[EntityId] = set()
     for rel in file.by_type("IFCRELSPACEBOUNDARY"):
         space_ref = attr(rel, "RelatingSpace")
         element_ref = attr(rel, "RelatedBuildingElement")
         if isinstance(space_ref, Ref) and isinstance(element_ref, Ref):
             _edge(RelKind.BOUNDS, element_ref, space_ref, rel.step_id)
+            boundary_kind = attr(rel, "InternalOrExternalBoundary")
+            eid = step_to_eid.get(element_ref.step_id)
+            if (
+                eid is not None
+                and getattr(boundary_kind, "name", "") == "EXTERNAL"
+            ):
+                external_elements.add(eid)
+    for eid in sorted(external_elements):
+        entity = entities[eid]
+        entities[eid] = Entity(
+            id=entity.id,
+            name=entity.name,
+            attrs={**entity.attrs, "external": True},
+            slots=entity.slots,
+            placement=entity.placement,
+            source_ref=entity.source_ref,
+        )
 
     voids_of_wall: dict[EntityId, list[EntityId]] = {w: [] for w in walls}
     for rel in rels:
