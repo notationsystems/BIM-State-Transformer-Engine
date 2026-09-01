@@ -30,10 +30,15 @@ from gat.adapters.ifc.reader import (
     global_id,
     name_of,
     properties_of,
+    pset_values,
     quantities_of,
     resolve_placement,
 )
-from gat.adapters.ifc.schema import PRODUCT_CLASSES, SUPPORTED_ENTITIES
+from gat.adapters.ifc.schema import (
+    ANNOTATED_PRODUCT_CLASSES,
+    PRODUCT_CLASSES,
+    SUPPORTED_ENTITIES,
+)
 from gat.adapters.ifc.units import SI_PREFIX_SCALE, assigned_unit_ids
 from gat.engine.executor import World
 from gat.engine.verify import run_invariants
@@ -197,6 +202,10 @@ class IfcAuditReport:
                 "instance_count": sum(count for _, count in self.type_counts),
                 "type_counts": {name: count for name, count in self.type_counts},
                 "opaque_type_counts": {name: count for name, count in opaque_counts},
+                "opt_in_product_candidate_counts": {
+                    name: dict(self.type_counts).get(name, 0)
+                    for name in sorted(ANNOTATED_PRODUCT_CLASSES)
+                },
                 "supported_product_count": len(self.entities),
                 "supported_product_status_counts": {
                     status: status_counts[status] for status in sorted(status_counts)
@@ -204,6 +213,12 @@ class IfcAuditReport:
             },
             "adapter_scope": {
                 "supported_ifc_product_types": list(supported_types),
+                "opt_in_ifc_product_types": {
+                    name: marker
+                    for name, (_, marker) in sorted(
+                        ANNOTATED_PRODUCT_CLASSES.items()
+                    )
+                },
                 "required_quantities": {
                     name: list(REQUIRED_QUANTITIES[canonical])
                     for name, canonical in sorted(PRODUCT_CLASSES.items())
@@ -365,6 +380,38 @@ def _audit_entity(
             )
         )
 
+    if canonical == "IfcBeam" and property_error is None:
+        try:
+            structural = pset_values(file, definitions or [], "GAT_Structural")
+            structural_required = {
+                "YieldStrengthMPa",
+                "YieldStrengthMPaSigma",
+                "SectionModulusM3",
+                "SectionModulusM3Sigma",
+                "ResistanceFactor",
+            }
+            missing_structural = sorted(structural_required - set(structural))
+            if missing_structural:
+                issues.append(
+                    AuditIssue(
+                        "MISSING_STRUCTURAL_PROPERTY",
+                        "ERROR",
+                        "GAT_Structural lacks " + ", ".join(missing_structural),
+                        inst.step_id,
+                        inst.type_name,
+                    )
+                )
+        except GatError as exc:
+            issues.append(
+                AuditIssue(
+                    "STRUCTURAL_PROPERTY_SET_UNREADABLE",
+                    "ERROR",
+                    str(exc),
+                    inst.step_id,
+                    inst.type_name,
+                )
+            )
+
     try:
         placement = attr(inst, "ObjectPlacement")
         if isinstance(placement, Ref):
@@ -452,8 +499,16 @@ def _audit_parsed(
     products: list[tuple[RawInstance, str]] = []
     for type_name, canonical in PRODUCT_CLASSES.items():
         products.extend((inst, canonical) for inst in file.by_type(type_name))
-    products.sort(key=lambda item: item[0].step_id)
-    product_ids = {inst.step_id for inst, _ in products}
+    annotated_candidates: list[tuple[RawInstance, str, str]] = []
+    for type_name, (canonical, marker) in ANNOTATED_PRODUCT_CLASSES.items():
+        annotated_candidates.extend(
+            (inst, canonical, marker) for inst in file.by_type(type_name)
+        )
+    product_ids = {
+        inst.step_id for inst, _ in products
+    } | {
+        inst.step_id for inst, _, _ in annotated_candidates
+    }
     property_map: dict[int, list[RawInstance]] = {}
     property_error: Exception | None = None
     try:
@@ -461,6 +516,17 @@ def _audit_parsed(
     except GatError as exc:
         property_error = exc
         model_issues.append(AuditIssue("PROPERTY_GRAPH_UNREADABLE", "ERROR", str(exc)))
+
+    if property_error is None:
+        for inst, canonical, marker in annotated_candidates:
+            definitions = property_map.get(inst.step_id, [])
+            if any(
+                definition.type_name == "IFCPROPERTYSET"
+                and attr(definition, "Name") == marker
+                for definition in definitions
+            ):
+                products.append((inst, canonical))
+    products.sort(key=lambda item: item[0].step_id)
 
     entities = tuple(
         _audit_entity(

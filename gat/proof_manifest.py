@@ -199,6 +199,7 @@ class ComputationProofManifest:
     result_world_digest: str
     operation_digest: str
     verification_digest: str
+    computation_result_digest: str | None
     numeric_contract: NumericContract
     model_contract_digest: str
     validation_profile_digest: str
@@ -219,6 +220,10 @@ class ComputationProofManifest:
             "manifest_digest",
         ):
             _require_digest(getattr(self, name), name)
+        if self.computation_result_digest is not None:
+            _require_digest(
+                self.computation_result_digest, "computation_result_digest"
+            )
         if isinstance(self.event_seq, bool) or not isinstance(self.event_seq, int):
             raise ProofManifestError("event_seq must be a non-negative integer")
         if self.event_seq < 1:
@@ -242,6 +247,7 @@ class ComputationProofManifest:
             "result_world_digest": self.result_world_digest,
             "operation_digest": self.operation_digest,
             "verification_digest": self.verification_digest,
+            "computation_result_digest": self.computation_result_digest,
             "numeric_contract_digest": _digest_json(self.numeric_contract.to_dict()),
             "model_contract_digest": self.model_contract_digest,
             "validation_profile_digest": self.validation_profile_digest,
@@ -297,6 +303,7 @@ class ComputationProofManifest:
                 "result_world_digest",
                 "operation_digest",
                 "verification_digest",
+                "computation_result_digest",
             },
             "statement",
         )
@@ -337,6 +344,14 @@ class ComputationProofManifest:
             _require_digest(statement["operation_digest"], "statement.operation_digest"),
             _require_digest(
                 statement["verification_digest"], "statement.verification_digest"
+            ),
+            (
+                None
+                if statement["computation_result_digest"] is None
+                else _require_digest(
+                    statement["computation_result_digest"],
+                    "statement.computation_result_digest",
+                )
             ),
             NumericContract.from_dict(root["numeric_contract"]),
             _require_digest(
@@ -402,6 +417,7 @@ def create_computation_proof_manifest(
     numeric_contract: NumericContract,
     model_contract_digest: str,
     validation_profile_digest: str,
+    computation_result_digest: str | None = None,
     evidence_commitments: tuple[str, ...] = (),
     proof_system: str,
     proof_type: str,
@@ -439,6 +455,13 @@ def create_computation_proof_manifest(
         event.result_world_digest,
         _digest_json(event.operation),
         event.verification_digest,
+        (
+            None
+            if computation_result_digest is None
+            else _require_digest(
+                computation_result_digest, "computation_result_digest"
+            )
+        ),
         numeric_contract,
         _require_digest(model_contract_digest, "model_contract_digest"),
         _require_digest(validation_profile_digest, "validation_profile_digest"),
@@ -521,6 +544,18 @@ def verify_computation_proof_manifest(
         )
     )
     checks.append(_check("transition statement", statement_ok, "event and world commitments"))
+
+    if manifest.computation_result_digest is None:
+        computation_ok = True
+        computation_detail = "no optional result commitment declared"
+    else:
+        computation_ok = ledger_ok and _ledger_commits_computation_result(
+            manifest, ledger
+        )
+        computation_detail = manifest.computation_result_digest
+    checks.append(
+        _check("computation result", computation_ok, computation_detail)
+    )
 
     public_ok = hmac.compare_digest(
         manifest.proof.public_values_digest, _digest_json(manifest.public_values())
@@ -618,6 +653,31 @@ def read_computation_proof_manifest(path: str | Path) -> ComputationProofManifes
     return ComputationProofManifest.from_dict(document)
 
 
+def _ledger_commits_computation_result(
+    manifest: ComputationProofManifest,
+    ledger: ExecutionLedger,
+) -> bool:
+    """Require an exact, later assessment to bind the optional result digest."""
+    expected = manifest.computation_result_digest
+    if expected is None:
+        return True
+    for event in ledger.events[manifest.event_seq + 1 :]:
+        if (
+            event.kind != "assessment"
+            or event.result_world_digest != manifest.result_world_digest
+        ):
+            continue
+        details = event.operation.get("details")
+        if not isinstance(details, dict):
+            continue
+        computation = details.get("computation")
+        if not isinstance(computation, dict):
+            continue
+        if computation.get("computation_digest") == expected:
+            return True
+    return False
+
+
 def _manifest_document(manifest: ComputationProofManifest) -> dict[str, object]:
     return {
         "format": PROOF_MANIFEST_FORMAT,
@@ -632,6 +692,7 @@ def _manifest_document(manifest: ComputationProofManifest) -> dict[str, object]:
             "result_world_digest": manifest.result_world_digest,
             "operation_digest": manifest.operation_digest,
             "verification_digest": manifest.verification_digest,
+            "computation_result_digest": manifest.computation_result_digest,
         },
         "numeric_contract": manifest.numeric_contract.to_dict(),
         "engineering_context": {

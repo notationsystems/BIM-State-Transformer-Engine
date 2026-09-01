@@ -53,13 +53,14 @@ class ComputationProofManifestTests(unittest.TestCase):
             "checked",
         )
 
-    def manifest(self):
+    def manifest(self, computation_result_digest=None):
         return create_computation_proof_manifest(
             self.session.ledger,
             1,
             numeric_contract=self.numeric,
             model_contract_digest=digest("engineering-model-contract"),
             validation_profile_digest=digest("validation-profile"),
+            computation_result_digest=computation_result_digest,
             evidence_commitments=(digest("scan-42"), digest("survey-control-A")),
             proof_system="sp1",
             proof_type="groth16",
@@ -160,6 +161,24 @@ class ComputationProofManifestTests(unittest.TestCase):
         self.assertFalse(report.bound)
         self.assertEqual(
             next(check for check in report.checks if check.name == "ledger head").status,
+            ProofCheckStatus.FAIL,
+        )
+
+    def test_declared_computation_result_requires_later_ledger_assessment(self) -> None:
+        manifest = self.manifest(digest("unrecorded-computation-result"))
+        report = verify_computation_proof_manifest(
+            manifest,
+            self.session.ledger,
+            self.proof_bytes,
+        )
+
+        self.assertFalse(report.bound)
+        self.assertEqual(
+            next(
+                check
+                for check in report.checks
+                if check.name == "computation result"
+            ).status,
             ProofCheckStatus.FAIL,
         )
 

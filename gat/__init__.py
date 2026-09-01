@@ -101,6 +101,16 @@ from gat.ledger import (
     verification_digest,
     write_ledger,
 )
+from gat.engineering import (
+    BEAM_BENDING_METHOD,
+    BeamBendingCheck,
+    BeamBendingEvaluator,
+    BeamCheckResult,
+    BeamDecisionChange,
+    beam_assessment_record,
+    explain_beam_decision_change,
+)
+from gat.evidence import CalibratedObservation, EvidenceKind
 from gat.proof_manifest import (
     PROOF_CLAIM_SCOPE,
     PROOF_MANIFEST_FORMAT,
@@ -177,6 +187,12 @@ __all__ = [
     "AuditStatus",
     "assess_decision",
     "AssessmentRecord",
+    "BEAM_BENDING_METHOD",
+    "BeamBendingCheck",
+    "BeamBendingEvaluator",
+    "BeamCheckResult",
+    "BeamDecisionChange",
+    "CalibratedObservation",
     "CompositeTransformation",
     "ComputationalEquivalenceReport",
     "ComputationProofManifest",
@@ -195,6 +211,7 @@ __all__ = [
     "ExecutionPreview",
     "ExecutionLedger",
     "EvidenceDisposition",
+    "EvidenceKind",
     "EvidenceReceipt",
     "EvidenceRequest",
     "EvolveLinearGaussian",
@@ -269,6 +286,7 @@ __all__ = [
     "assess_difference",
     "audit_ifc_file",
     "audit_ifc_text",
+    "beam_assessment_record",
     "capture_snapshot",
     "computational_equivalence",
     "create_computation_proof_manifest",
@@ -284,6 +302,7 @@ __all__ = [
     "encode_causal_record",
     "execute",
     "evaluate_acceptance_case",
+    "explain_beam_decision_change",
     "forecast_process",
     "generate_openusd_keypair",
     "migrate_openusd",

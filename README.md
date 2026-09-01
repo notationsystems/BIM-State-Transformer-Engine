@@ -82,6 +82,7 @@ python -m gat.demo.openusd_portability  # do the same through a composed USD sta
 python -m gat.demo.ledger_replay execution-ledger.json  # replay accepted + rejected history
 python -m gat.demo.temporal_process  # explicit process prediction -> evidence update -> replay
 python -m gat.demo.workflow          # opening acceptance + non-mutating RFI preview
+python -m gat.demo.beam_assurance out/beam  # complete evidence-to-verification chain
 gat-headless request.json -o response.json  # read-only workflow boundary
 python -m unittest discover   # the test suite
 ```
@@ -133,6 +134,7 @@ GAT v0 treats one object — **the evolving architectural state** — and implem
 | Layer | Question it answers | Concept | Module | v0 status |
 |---|---|---|---|---|
 | Boundary | What can enter/leave the system? | Explicit evidence/action adapters | `gat/adapters/`, `gat/geometry/scan_io.py`, `gat/geometry/scan_likelihood.py` | implemented (IFC, JSON, scan artifacts, calibrated clearance likelihood) |
+| Epistemic identity | What kind of claim entered state, and from which source? | Typed calibrated evidence | `gat/evidence.py` | implemented (`MEASURED`, `ESTIMATED`, `INFERRED`, `ASSUMED`, `SIMULATED`, `DERIVED`) |
 | Portability | Can computation resume across a runtime boundary? | Restartable state snapshot + operational equivalence | `gat/state_snapshot.py`, `gat/adapters/openusd.py` | implemented (JSON and OpenUSD carriers) |
 | History | Can the evolution be independently reproduced? | Closed, hash-chained accepted/rejected event ledger | `gat/ledger.py` | implemented (schema v1 + exact replay) |
 | Computational integrity | Can an external proof system attest one exact accepted transition? | Proof-carrying state-transition manifest | `gat/proof_manifest.py` | implemented (backend-neutral binding; cryptographic verifier optional) |
@@ -415,6 +417,36 @@ Only a later acquired measurement conditions the belief. See
 [`docs/causal-events-v1.md`](docs/causal-events-v1.md) for typed records,
 lifecycle rules, and the authority/signature boundary.
 
+### Reference experiment — one complete beam chain
+
+`python -m gat.demo.beam_assurance out/beam` executes the project's first
+complete identity-preserving engineering chain:
+
+```text
+IfcBeam -> canonical raw/derived state -> typed material certificate
+  -> Gaussian conditioning -> deterministic bending capacity
+  -> SATISFIED/VIOLATED -> state-bound assessment -> replay/snapshot
+  -> optional SP1 request (BACKEND_REQUIRED; no proof claimed)
+```
+
+The shipped beam starts at `fy = 350 +/- 8 MPa`, section modulus
+`Z = 0.001 +/- 0.00001 m3`, and resistance factor `phi = 0.9`. Its design
+capacity is `315000 +/- 7858.9 N*m`, satisfying a `301000 N*m` demand at
+95% confidence. A `MEASURED` certificate reports `325 +/- 2 MPa`; Bayesian
+conditioning produces the posterior `326.471 +/- 1.940 MPa`, not a false
+exact assignment to 325 MPa. The two identified descendants—nominal and
+design moment capacity—are recomputed, and the revised
+`293823.5 +/- 3418.0 N*m` capacity is `VIOLATED` at the same confidence.
+
+The verification record contains the beam/variable identities, evidence and
+source digests, prior/result world identities, changed belief, covariance
+change, affected variables, model/validation/dependency/computation digests,
+probabilities, verdicts, and a human-readable causal reason. The emitted IFC,
+state snapshot, ledger, summary, and proof request let another runtime replay,
+verify, and continue the exact belief. See
+[`docs/beam-assurance-reference-chain.md`](docs/beam-assurance-reference-chain.md)
+for the contracts and explicit limitations.
+
 ### Proof-carrying computation claims
 
 An accepted ledger transition can now be packaged as a
@@ -423,7 +455,9 @@ result worlds, closed operation, verification report, event and ledger head,
 proof-program and verifying-key digests, an explicit numerical contract, and
 the external proof bytes. Engineering-model and validation-profile digests
 travel beside the claim so computational integrity cannot silently masquerade
-as engineering validity.
+as engineering validity. A manifest may additionally bind a computation-result
+digest, but only when a later state-bound assessment in the same ledger records
+that exact digest.
 
 ```python
 from hashlib import sha256
@@ -446,6 +480,7 @@ manifest = create_computation_proof_manifest(
     numeric_contract=numeric,
     model_contract_digest=sha256(engineering_contract_bytes).hexdigest(),
     validation_profile_digest=sha256(validation_profile_bytes).hexdigest(),
+    computation_result_digest=engineering_result.computation_digest,  # optional
     proof_system="sp1",
     proof_type="groth16",
     program_digest=sha256(guest_elf).hexdigest(),

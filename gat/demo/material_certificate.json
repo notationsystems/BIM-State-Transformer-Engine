@@ -1,0 +1,9 @@
+{
+  "certificate_id": "MAT-CERT-B1-325",
+  "subject_ifc_global_id": "GATBEAMELEMENT00000100",
+  "property": "YieldStrengthMPa",
+  "reported_value": 325.0,
+  "standard_uncertainty_sigma": 2.0,
+  "unit": "MPa",
+  "method": "coupon-test-material-certificate-v1"
+}

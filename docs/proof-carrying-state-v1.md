@@ -35,8 +35,11 @@ The ledger and proof manifest have different jobs:
 
 The manifest binds a transition event by sequence and event hash, its exact
 ledger head, prior/result world digests, operation digest, and invariant-report
-digest. Rejected attempts and state-preserving causal events cannot receive a
-state-transition proof manifest.
+digest. It may also bind an optional deterministic computation-result digest.
+When declared, that exact digest must occur in a later state-bound assessment
+under the transition's result world and within the committed ledger head.
+Rejected attempts and state-preserving causal events cannot receive a
+state-transition proof manifest themselves.
 
 The ledger head is intentionally exact. If more events are appended, the old
 manifest remains a statement about the earlier ledger version and will not
@@ -59,6 +62,7 @@ statement the proof program must expose:
   "result_world_digest": "sha256",
   "operation_digest": "sha256",
   "verification_digest": "sha256",
+  "computation_result_digest": "sha256-or-null",
   "numeric_contract_digest": "sha256",
   "model_contract_digest": "sha256",
   "validation_profile_digest": "sha256",
@@ -112,6 +116,7 @@ manifest = create_computation_proof_manifest(
     ),
     model_contract_digest=model_contract_digest,
     validation_profile_digest=validation_profile_digest,
+    computation_result_digest=engineering_result_digest,  # optional
     evidence_commitments=(scan_digest, calibration_digest),
     proof_system="sp1",
     proof_type="groth16",
@@ -134,7 +139,8 @@ assert verified.proof_verified
 
 Verification has separate checks for manifest integrity, ledger integrity,
 accepted-event identity, exact ledger head, transition statement, public
-values, proof bytes, and the backend cryptographic proof. When no verifier is
+values, the optional assessment-bound computation result, proof bytes, and the
+backend cryptographic proof. When no verifier is
 supplied, the final check is `NOT_CHECKED`; it can never be reported as passed.
 If an earlier binding check fails, the backend is not invoked.
 

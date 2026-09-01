@@ -36,4 +36,4 @@ Repository = "https://github.com/notationsystems/GAT-Gaussian-Architectural-Tran
 include = ["gat*"]
 
 [tool.setuptools.package-data]
-"gat.demo" = ["model.ifc"]
+"gat.demo" = ["*.ifc", "material_certificate.json"]

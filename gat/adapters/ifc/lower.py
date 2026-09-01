@@ -16,6 +16,8 @@ DERIVED quantity layer plus the constraint set:
 * ``door.Area``            := Width * Height
 * ``space.FloorArea``      := Length * Width
 * ``space.Volume``         := FloorArea * storey.ClearHeight
+* ``beam.NominalMomentCapacity`` := fy * section modulus
+* ``beam.DesignMomentCapacity``  := resistance factor * nominal capacity
 * storey rollups           := Σ member quantities
 
 The shared ``ClearHeight`` raw variable is the coupling model: one design
@@ -23,13 +25,18 @@ change to the storey height cascades through every wall and space, and
 room volumes become correlated through their shared parent — covariance
 as the carrier of architectural dependency (README §16 Q3).
 
-Geometry enters v0 through base quantities and placements, not through
+Structural lowering is deliberately opt-in: only ``IfcBeam`` entities carrying
+the closed ``GAT_Structural`` property-set contract become authoritative state.
+Unannotated beams remain opaque adapter input.  Geometry enters v0 through
+base quantities and placements, not through
 solid-model parsing; that boundary is an explicit adapter decision
 (README §12) — a geometric adapter can replace this one without touching
 the engine.
 """
 
 from __future__ import annotations
+
+import math
 
 from gat.adapters.ifc.parser import IfcFile, RawInstance, Ref
 from gat.adapters.ifc.reader import (
@@ -43,7 +50,7 @@ from gat.adapters.ifc.reader import (
     refs,
     resolve_placement,
 )
-from gat.adapters.ifc.schema import PRODUCT_CLASSES
+from gat.adapters.ifc.schema import ANNOTATED_PRODUCT_CLASSES, PRODUCT_CLASSES
 from gat.adapters.ifc.units import LengthUnitContext, length_unit_context
 from gat.errors import LoweringError
 from gat.ids import EntityId, VarId
@@ -59,7 +66,7 @@ from gat.ir.core import (
     Role,
     Unit,
 )
-from gat.ir.exprs import Mul, ScaledSum, Sub, VarRef
+from gat.ir.exprs import Const, Mul, ScaledSum, Sub, VarRef
 
 #: Default prior sigmas by (canonical class, quantity name).
 DEFAULT_SIGMAS: dict[tuple[str, str], float] = {
@@ -72,6 +79,7 @@ DEFAULT_SIGMAS: dict[tuple[str, str], float] = {
     ("IfcDoor", "Height"): 0.003,
     ("IfcSpace", "Length"): 0.005,
     ("IfcSpace", "Width"): 0.005,
+    ("IfcBeam", "Length"): 0.005,
 }
 
 #: Relative default sigma for wall unit cost (8 % of the mean).
@@ -83,6 +91,7 @@ REQUIRED_QUANTITIES: dict[str, tuple[str, ...]] = {
     "IfcOpeningElement": ("Width", "Height"),
     "IfcDoor": ("Width", "Height"),
     "IfcSpace": ("Length", "Width"),
+    "IfcBeam": ("Length",),
 }
 
 QUANTITY_UNITS: dict[str, Unit] = {
@@ -124,8 +133,27 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
             eid = EntityId(canonical, global_id(inst))
             products[inst.step_id] = (eid, inst, canonical)
 
+    annotated_candidates: dict[int, tuple[RawInstance, str, str]] = {}
+    for type_name, (canonical, marker_pset) in ANNOTATED_PRODUCT_CLASSES.items():
+        for inst in file.by_type(type_name):
+            annotated_candidates[inst.step_id] = (inst, canonical, marker_pset)
+    prop_map = properties_of(file, set(products) | set(annotated_candidates))
+    for sid, (inst, canonical, marker_pset) in annotated_candidates.items():
+        definitions = prop_map.get(sid, [])
+        marked = any(
+            definition.type_name == "IFCPROPERTYSET"
+            and attr(definition, "Name") == marker_pset
+            for definition in definitions
+        )
+        if marked:
+            products[sid] = (
+                EntityId(canonical, global_id(inst)),
+                inst,
+                canonical,
+            )
+
     step_to_eid = {sid: eid for sid, (eid, _, _) in products.items()}
-    prop_map = properties_of(file, set(products))
+    prop_map = {sid: prop_map.get(sid, []) for sid in products}
 
     entities: dict[EntityId, Entity] = {}
     quantity_refs: dict[VarId, int] = {}
@@ -135,6 +163,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
     spaces: list[EntityId] = []
     openings: list[EntityId] = []
     doors: list[EntityId] = []
+    beams: list[EntityId] = []
     priced_walls: set[EntityId] = set()
 
     for sid in sorted(products):
@@ -148,8 +177,10 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         # precedence so uncertainty round-trips through IFC.
         overrides.update(pset_values(file, defs, "GAT_Posterior"))
         material = pset_value_refs(file, defs, "GAT_Material")
+        structural = pset_value_refs(file, defs, "GAT_Structural")
 
         slots: dict[str, QtySlot] = {}
+        entity_attrs: dict[str, str | int | float] = {}
         for qname in REQUIRED_QUANTITIES.get(canonical, ()):
             if qname not in quantities:
                 raise LoweringError(
@@ -177,6 +208,53 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
                 source_ref=qref,
             )
             quantity_refs[var] = qref
+
+        if canonical == "IfcBeam":
+            required = {
+                "YieldStrengthMPa": Unit.MPA,
+                "SectionModulusM3": Unit.M3,
+            }
+            for qname, unit in required.items():
+                sigma_name = f"{qname}Sigma"
+                if qname not in structural or sigma_name not in structural:
+                    raise LoweringError(
+                        f"{canonical} {eid.global_id} ({name_of(inst)!r}) "
+                        f"GAT_Structural lacks {qname!r} or {sigma_name!r}"
+                    )
+                mean, value_ref = structural[qname]
+                sigma = overrides.get(sigma_name, structural[sigma_name][0])
+                if not math.isfinite(mean) or not math.isfinite(sigma) or sigma <= 0.0:
+                    raise LoweringError(
+                        f"{canonical} {eid.global_id} {qname} mean/sigma must be finite "
+                        "with positive sigma"
+                    )
+                if value_ref in used_source_refs:
+                    raise LoweringError(
+                        f"property #{value_ref} is shared by multiple state variables"
+                    )
+                used_source_refs.add(value_ref)
+                var = VarId(eid, qname)
+                slots[qname] = QtySlot(
+                    var=var,
+                    role=Role.RAW,
+                    unit=unit,
+                    prior_mu=float(mean),
+                    prior_sigma=float(sigma),
+                    source_ref=value_ref,
+                )
+                quantity_refs[var] = value_ref
+            if "ResistanceFactor" not in structural:
+                raise LoweringError(
+                    f"{canonical} {eid.global_id} GAT_Structural lacks "
+                    "'ResistanceFactor'"
+                )
+            resistance_factor = float(structural["ResistanceFactor"][0])
+            if not math.isfinite(resistance_factor) or not 0.0 < resistance_factor <= 1.0:
+                raise LoweringError("beam ResistanceFactor must be in (0, 1]")
+            entity_attrs = {
+                "structural_method": "elastic-section-yield-v1",
+                "resistance_factor": resistance_factor,
+            }
 
         if canonical == "IfcWall" and "UnitCost" in material:
             mean, cost_ref = material["UnitCost"]
@@ -208,7 +286,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         entities[eid] = Entity(
             id=eid,
             name=name_of(inst),
-            attrs={},
+            attrs=entity_attrs,
             slots=slots,
             placement=placement,
             source_ref=sid,
@@ -220,6 +298,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
             "IfcSpace": spaces,
             "IfcOpeningElement": openings,
             "IfcDoor": doors,
+            "IfcBeam": beams,
         }[canonical].append(eid)
 
     if len(storeys) != 1:
@@ -364,6 +443,27 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         )
         add_derived(space, "Volume", Unit.M3, Mul(VarRef(floor), VarRef(clear_height)))
 
+    for beam in beams:
+        resistance_factor = float(entities[beam].attrs["resistance_factor"])
+        nominal = add_derived(
+            beam,
+            "NominalMomentCapacity",
+            Unit.N_M,
+            Mul(
+                Const(1.0e6),
+                Mul(
+                    VarRef(VarId(beam, "YieldStrengthMPa")),
+                    VarRef(VarId(beam, "SectionModulusM3")),
+                ),
+            ),
+        )
+        add_derived(
+            beam,
+            "DesignMomentCapacity",
+            Unit.N_M,
+            Mul(Const(resistance_factor), VarRef(nominal)),
+        )
+
     # Rollup membership comes from the SAME relationship edges the QTY-01
     # invariant re-sums over (walls CONTAINed in the storey, spaces
     # AGGREGATED into it), so the DAG and the graph can never disagree
@@ -437,6 +537,27 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
             VarRef(clear_height),
         )
         constraints.append(ExprEquals(VarId(space, "Volume"), restatement))
+    for beam in beams:
+        resistance_factor = float(entities[beam].attrs["resistance_factor"])
+        nominal_restatement = Mul(
+            Const(1.0e6),
+            Mul(
+                VarRef(VarId(beam, "YieldStrengthMPa")),
+                VarRef(VarId(beam, "SectionModulusM3")),
+            ),
+        )
+        constraints.append(
+            ExprEquals(VarId(beam, "NominalMomentCapacity"), nominal_restatement)
+        )
+        constraints.append(
+            ExprEquals(
+                VarId(beam, "DesignMomentCapacity"),
+                Mul(
+                    Const(resistance_factor),
+                    VarRef(VarId(beam, "NominalMomentCapacity")),
+                ),
+            )
+        )
 
     module = Module(
         entities=entities,
