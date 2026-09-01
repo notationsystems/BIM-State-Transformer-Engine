@@ -1,16 +1,21 @@
-# GAT — Gaussian Architectural Transformer for BIM
+# BIM State Transformer — GAT computational core for BIM
 
-**GAT (Gaussian Architectural Transformer)** is a decision-focused,
-uncertainty-aware state engine for Building Information Modeling (BIM).  Its
-compiler substrate turns IFC design intent into an auditable architectural
-belief that can absorb physical evidence, propagate consequences, and verify
-the resulting state.
+**BIM State Transformer** is a portable, decision-focused computational state
+runtime for Building Information Modeling (BIM). Its **GAT (Gaussian
+Architectural Transformer)** core turns IFC design intent into an auditable
+architectural belief that can absorb physical evidence, propagate
+consequences, and verify the resulting state.
 
-GAT investigates whether BIM can be treated not merely as a digital description of a building, but as a **computational state space** in which architectural geometry, relationships, constraints, uncertainty, and derived properties can be transformed and propagated systematically.
+The project investigates whether BIM can be treated not merely as a digital description of a building, but as a **computational state space** in which architectural geometry, relationships, constraints, uncertainty, and derived properties can be transformed and propagated systematically.
 
 > **Design intent + evidence + criteria → belief → decision or next evidence → verified state**
 
-GAT is an experimental research engine. It is not intended to replace BIM authoring software, IFC, CAD, or architectural simulation systems. Its purpose is to investigate a computational layer that can operate **between BIM representations and downstream analysis, inference, simulation, and optimization.**
+BIM State Transformer is an experimental research engine. It is not intended
+to replace BIM authoring software, IFC, OpenUSD, CAD, or architectural
+simulation systems. Its purpose is to investigate a computational layer that
+can operate **between BIM representations and downstream analysis, inference,
+simulation, and optimization.** GAT remains the Gaussian belief/conditioning
+engine; OpenUSD remains an optional portable state carrier.
 
 ## Current direction — decision-focused active BIM
 
@@ -82,6 +87,7 @@ python -m gat.demo.openusd_portability  # do the same through a composed USD sta
 python -m gat.demo.ledger_replay execution-ledger.json  # replay accepted + rejected history
 python -m gat.demo.temporal_process  # explicit process prediction -> evidence update -> replay
 python -m gat.demo.workflow          # opening acceptance + non-mutating RFI preview
+python -m gat.demo.beam_assurance out/beam  # complete evidence-to-verification chain
 gat-headless request.json -o response.json  # read-only workflow boundary
 python -m unittest discover   # the test suite
 ```
@@ -133,8 +139,10 @@ GAT v0 treats one object — **the evolving architectural state** — and implem
 | Layer | Question it answers | Concept | Module | v0 status |
 |---|---|---|---|---|
 | Boundary | What can enter/leave the system? | Explicit evidence/action adapters | `gat/adapters/`, `gat/geometry/scan_io.py`, `gat/geometry/scan_likelihood.py` | implemented (IFC, JSON, scan artifacts, calibrated clearance likelihood) |
+| Epistemic identity | What kind of claim entered state, and from which source? | Typed calibrated evidence | `gat/evidence.py` | implemented (`MEASURED`, `ESTIMATED`, `INFERRED`, `ASSUMED`, `SIMULATED`, `DERIVED`) |
 | Portability | Can computation resume across a runtime boundary? | Restartable state snapshot + operational equivalence | `gat/state_snapshot.py`, `gat/adapters/openusd.py` | implemented (JSON and OpenUSD carriers) |
 | History | Can the evolution be independently reproduced? | Closed, hash-chained accepted/rejected event ledger | `gat/ledger.py` | implemented (schema v1 + exact replay) |
+| Computational integrity | Can an external proof system attest one exact accepted transition? | Proof-carrying state-transition manifest | `gat/proof_manifest.py` | implemented (backend-neutral binding; cryptographic verifier optional) |
 | Causality | What was assessed, selected, approved, or done without changing belief? | Typed state-bound causal events | `gat/causal.py` | implemented (closed records + lifecycles) |
 | Inference | What state explains the evidence? | Bayesian conditioning | `gat/gaussian/condition.py` | implemented (linearized observations) |
 | State | What do we currently believe? | Gaussian state μ, Σ | `gat/gaussian/` | implemented |
@@ -430,6 +438,89 @@ assert session.world.digest() == assessment.world_digest  # no hidden mutation
 Only a later acquired measurement conditions the belief. See
 [`docs/causal-events-v1.md`](docs/causal-events-v1.md) for typed records,
 lifecycle rules, and the authority/signature boundary.
+
+### Reference experiment — one complete beam chain
+
+`python -m gat.demo.beam_assurance out/beam` executes the project's first
+complete identity-preserving engineering chain:
+
+```text
+IfcBeam -> canonical raw/derived state -> typed material certificate
+  -> Gaussian conditioning -> deterministic bending capacity
+  -> SATISFIED/VIOLATED -> state-bound assessment -> replay/snapshot
+  -> optional SP1 request (BACKEND_REQUIRED; no proof claimed)
+```
+
+The shipped beam starts at `fy = 350 +/- 8 MPa`, section modulus
+`Z = 0.001 +/- 0.00001 m3`, and resistance factor `phi = 0.9`. Its design
+capacity is `315000 +/- 7858.9 N*m`, satisfying a `301000 N*m` demand at
+95% confidence. A `MEASURED` certificate reports `325 +/- 2 MPa`; Bayesian
+conditioning produces the posterior `326.471 +/- 1.940 MPa`, not a false
+exact assignment to 325 MPa. The two identified descendants—nominal and
+design moment capacity—are recomputed, and the revised
+`293823.5 +/- 3418.0 N*m` capacity is `VIOLATED` at the same confidence.
+
+The verification record contains the beam/variable identities, evidence and
+source digests, prior/result world identities, changed belief, covariance
+change, affected variables, model/validation/dependency/computation digests,
+probabilities, verdicts, and a human-readable causal reason. The emitted IFC,
+state snapshot, ledger, summary, and proof request let another runtime replay,
+verify, and continue the exact belief. See
+[`docs/beam-assurance-reference-chain.md`](docs/beam-assurance-reference-chain.md)
+for the contracts and explicit limitations.
+
+### Proof-carrying computation claims
+
+An accepted ledger transition can now be packaged as a
+`gat-computation-proof-manifest` v1. The manifest binds the exact prior and
+result worlds, closed operation, verification report, event and ledger head,
+proof-program and verifying-key digests, an explicit numerical contract, and
+the external proof bytes. Engineering-model and validation-profile digests
+travel beside the claim so computational integrity cannot silently masquerade
+as engineering validity. A manifest may additionally bind a computation-result
+digest, but only when a later state-bound assessment in the same ledger records
+that exact digest.
+
+```python
+from hashlib import sha256
+from gat import (
+    NumericContract,
+    create_computation_proof_manifest,
+    verify_computation_proof_manifest,
+)
+
+numeric = NumericContract(
+    "clearance-micrometre-v1",
+    sha256(numeric_profile_bytes).hexdigest(),
+    "signed-fixed-point",
+    "nearest-ties-to-even",
+    "checked",
+)
+manifest = create_computation_proof_manifest(
+    session.ledger,
+    event_seq=len(session.ledger.events) - 1,
+    numeric_contract=numeric,
+    model_contract_digest=sha256(engineering_contract_bytes).hexdigest(),
+    validation_profile_digest=sha256(validation_profile_bytes).hexdigest(),
+    computation_result_digest=engineering_result.computation_digest,  # optional
+    proof_system="sp1",
+    proof_type="groth16",
+    program_digest=sha256(guest_elf).hexdigest(),
+    verifying_key_digest=sha256(verifying_key).hexdigest(),
+    proof_artifact=proof_bytes,
+)
+
+# Binding alone is not proof verification. A host must supply the backend.
+report = verify_computation_proof_manifest(
+    manifest, session.ledger, proof_bytes, verifier=sp1_verifier
+)
+assert report.proof_verified
+```
+
+GAT does not include an SP1 runtime, fetch proof locators, infer privacy from a
+proof-type label, or authorize a building action because a proof verifies.
+See [`docs/proof-carrying-state-v1.md`](docs/proof-carrying-state-v1.md) for
+the statement, numerical and trust contracts.
 
 ### Portable computational-state snapshots
 
@@ -1199,7 +1290,7 @@ The Gaussian representation is therefore one component of a larger computational
 
 **Research / Experimental — v0 implemented**
 
-GAT is an exploratory open-source project. The v0 engine (see *GAT v0 — the implemented engine* above) implements the §17 milestone end to end: the state-propagation core, the geometric Gaussian layer, explicit temporal process dynamics, decision-focused active inference, calibrated scan evidence, a deterministic causal execution ledger, restartable computational state through JSON and OpenUSD, and self-asserting demonstrations backed by a full test suite.
+GAT is an exploratory open-source project. The v0 engine (see *GAT v0 — the implemented engine* above) implements the §17 milestone end to end: the state-propagation core, the geometric Gaussian layer, explicit temporal process dynamics, decision-focused active inference, calibrated scan evidence, a deterministic causal execution ledger, restartable computational state through JSON and OpenUSD, backend-neutral proof-carrying transition commitments, and self-asserting demonstrations backed by a full test suite.
 
 The architecture, mathematical assumptions, representations, and implementation are expected to evolve as they are tested against real BIM data and engineering workflows.
 
@@ -1215,6 +1306,10 @@ GAT's adapter boundary (§12) is designed to meet the surrounding toolchain rath
 * [OpenUSD](https://openusd.org/) — GAT's first optional scene-graph carrier
   for the restartable state contract and derived geometry. It is an
   interoperability layer, not a replacement for the canonical runtime.
+* [SP1](https://github.com/succinctlabs/sp1) — the first intended external
+  verifier backend for proof-carrying GAT transitions. The core currently
+  defines and verifies the portable binding manifest only; it does not bundle
+  a zkVM, proving service, blockchain, or implicit confidentiality claim.
 
 No claim is made that Gaussian representations are universally optimal for BIM.
 

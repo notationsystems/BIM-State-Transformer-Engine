@@ -78,5 +78,34 @@ class TestWorkflowDemoSubprocess(unittest.TestCase):
         self.assertIn("canonical state digest unchanged", proc.stdout)
 
 
+class TestBeamAssuranceDemoSubprocess(unittest.TestCase):
+    def test_complete_beam_chain_runs_and_emits_verifiable_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(
+                [sys.executable, "-m", "gat.demo.beam_assurance", tmp],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(
+                proc.returncode,
+                0,
+                f"beam demo failed:\nstdout:\n{proc.stdout[-3000:]}\n"
+                f"stderr:\n{proc.stderr[-3000:]}",
+            )
+            self.assertIn("SATISFIED", proc.stdout)
+            self.assertIn("VIOLATED", proc.stdout)
+            self.assertIn("SP1: BACKEND_REQUIRED", proc.stdout)
+            for name in (
+                "beam_posterior.ifc",
+                "beam_state.gat.json",
+                "beam_ledger.json",
+                "beam_sp1_request.json",
+                "beam_assurance_summary.json",
+            ):
+                self.assertTrue(os.path.exists(os.path.join(tmp, name)), name)
+
+
 if __name__ == "__main__":
     unittest.main()

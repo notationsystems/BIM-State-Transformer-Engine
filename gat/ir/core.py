@@ -34,6 +34,8 @@ class Unit(Enum):
     M = "m"
     M2 = "m2"
     M3 = "m3"
+    MPA = "MPa"
+    N_M = "N*m"
     CURRENCY = "cur"
     CURRENCY_PER_M3 = "cur/m3"
 

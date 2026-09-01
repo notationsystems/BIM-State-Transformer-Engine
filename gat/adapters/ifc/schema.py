@@ -18,6 +18,7 @@ SUPPORTED_ENTITIES: dict[str, dict[str, int]] = {
     "IFCSPACE": {"GlobalId": 0, "Name": 2, "ObjectPlacement": 5},
     "IFCOPENINGELEMENT": {"GlobalId": 0, "Name": 2, "ObjectPlacement": 5},
     "IFCDOOR": {"GlobalId": 0, "Name": 2, "ObjectPlacement": 5},
+    "IFCBEAM": {"GlobalId": 0, "Name": 2, "ObjectPlacement": 5},
     "IFCRELAGGREGATES": {"GlobalId": 0, "RelatingObject": 4, "RelatedObjects": 5},
     "IFCRELCONTAINEDINSPATIALSTRUCTURE": {
         "GlobalId": 0,
@@ -68,4 +69,12 @@ PRODUCT_CLASSES: dict[str, str] = {
     "IFCSPACE": "IfcSpace",
     "IFCOPENINGELEMENT": "IfcOpeningElement",
     "IFCDOOR": "IfcDoor",
+}
+
+# Engineering elements become authoritative only when an explicit GAT
+# contract property set is present. Keeping these outside PRODUCT_CLASSES
+# prevents ordinary real-world IFC beams from becoming mandatory inputs to
+# the v0 architectural lowering path.
+ANNOTATED_PRODUCT_CLASSES: dict[str, tuple[str, str]] = {
+    "IFCBEAM": ("IfcBeam", "GAT_Structural"),
 }

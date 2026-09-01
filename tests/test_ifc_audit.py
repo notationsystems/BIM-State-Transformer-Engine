@@ -13,6 +13,7 @@ from gat.ifc_audit import AuditStatus, EntityStatus, audit_ifc_file, audit_ifc_t
 
 
 MODEL = os.path.join(os.path.dirname(gat.demo.__file__), "model.ifc")
+BEAM_MODEL = os.path.join(os.path.dirname(gat.demo.__file__), "beam_model.ifc")
 
 
 class IfcAuditTests(unittest.TestCase):
@@ -36,6 +37,21 @@ class IfcAuditTests(unittest.TestCase):
         second = audit_ifc_text(self.demo_text, source="same.ifc")
         self.assertEqual(first.to_json(), second.to_json())
         self.assertEqual(first.world_digest, second.world_digest)
+
+    def test_opt_in_structural_beam_is_audited_as_authoritative_scope(self) -> None:
+        report = audit_ifc_file(BEAM_MODEL)
+        beam = next(
+            entity for entity in report.entities
+            if entity.canonical_class == "IfcBeam"
+        )
+        document = report.to_dict()
+
+        self.assertTrue(report.pipeline_ready)
+        self.assertEqual(beam.status, EntityStatus.READY)
+        self.assertEqual(
+            document["adapter_scope"]["opt_in_ifc_product_types"]["IFCBEAM"],
+            "GAT_Structural",
+        )
 
     def test_prefixed_units_are_normalized_without_hiding_inventory(self) -> None:
         millimetres = self.demo_text.replace(

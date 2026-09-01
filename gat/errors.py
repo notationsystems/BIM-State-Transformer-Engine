@@ -78,3 +78,7 @@ class DecisionError(GatError):
 
 class LedgerError(GatError):
     """An execution ledger is malformed, has been tampered with, or cannot replay."""
+
+
+class ProofManifestError(GatError):
+    """A computation-proof manifest is malformed, unbound, or inconsistent."""
