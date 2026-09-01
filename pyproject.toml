@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gat-bim"
 version = "0.1.0"
-description = "A decision-focused, uncertainty-aware computational state engine for BIM"
+description = "A portable evidence-to-decision computational state runtime for BIM"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -30,7 +30,7 @@ gat-ifc-audit = "gat.cli:ifc_audit_main"
 openusd = ["usd-core>=26.8,<27", "cryptography>=40"]
 
 [project.urls]
-Repository = "https://github.com/notationsystems/GAT-Gaussian-Architectural-Transformer-for-BIM"
+Repository = "https://github.com/notationsystems/BIM-State-Transformer"
 
 [tool.setuptools.packages.find]
 include = ["gat*"]

@@ -1,16 +1,21 @@
-# GAT — Gaussian Architectural Transformer for BIM
+# BIM State Transformer — GAT computational core for BIM
 
-**GAT (Gaussian Architectural Transformer)** is a decision-focused,
-uncertainty-aware state engine for Building Information Modeling (BIM).  Its
-compiler substrate turns IFC design intent into an auditable architectural
-belief that can absorb physical evidence, propagate consequences, and verify
-the resulting state.
+**BIM State Transformer** is a portable, decision-focused computational state
+runtime for Building Information Modeling (BIM). Its **GAT (Gaussian
+Architectural Transformer)** core turns IFC design intent into an auditable
+architectural belief that can absorb physical evidence, propagate
+consequences, and verify the resulting state.
 
-GAT investigates whether BIM can be treated not merely as a digital description of a building, but as a **computational state space** in which architectural geometry, relationships, constraints, uncertainty, and derived properties can be transformed and propagated systematically.
+The project investigates whether BIM can be treated not merely as a digital description of a building, but as a **computational state space** in which architectural geometry, relationships, constraints, uncertainty, and derived properties can be transformed and propagated systematically.
 
 > **Design intent + evidence + criteria → belief → decision or next evidence → verified state**
 
-GAT is an experimental research engine. It is not intended to replace BIM authoring software, IFC, CAD, or architectural simulation systems. Its purpose is to investigate a computational layer that can operate **between BIM representations and downstream analysis, inference, simulation, and optimization.**
+BIM State Transformer is an experimental research engine. It is not intended
+to replace BIM authoring software, IFC, OpenUSD, CAD, or architectural
+simulation systems. Its purpose is to investigate a computational layer that
+can operate **between BIM representations and downstream analysis, inference,
+simulation, and optimization.** GAT remains the Gaussian belief/conditioning
+engine; OpenUSD remains an optional portable state carrier.
 
 ## Current direction — decision-focused active BIM
 
