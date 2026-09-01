@@ -107,11 +107,12 @@ IFC export reverses that boundary so posterior means and sigmas retain the
 source project's unit convention. Conversion-based length units remain
 fail-closed pending complete conversion-chain support.
 
-The commit-pinned public corpus now runs in CI. Measured results include the
-buildingSMART PCERT architecture scene and the 65 MB Schependomlaan model:
-Schependomlaan exposes 1,086 products in GAT's current scope, of which 1,022
-have geometry suitable for a future quantity-derivation adapter and 63 also
-require broader placement support. See
+The commit-pinned public corpus now runs in CI. It includes the 19 MB
+buildingSMART Medical–Dental Clinic structural model: 317,671 IFC instances,
+4 storeys, and 738 beams. GAT parses and inventories the whole file, identifies
+all beams as structural candidates, and fails closed at the current
+multi-storey and source-evidence boundaries. Measured results also include the
+PCERT architecture scene and the 65 MB Schependomlaan model. See
 [`docs/real-ifc-validation-v1.md`](docs/real-ifc-validation-v1.md) for the
 reproducible corpus, exact failure taxonomy, and adapter-hardening order.
 

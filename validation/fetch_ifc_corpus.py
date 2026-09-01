@@ -1,4 +1,4 @@
-"""Fetch the small, commit-pinned IFC validation corpus and verify its bytes."""
+"""Fetch the CI-sized, commit-pinned IFC validation corpus and verify its bytes."""
 
 from __future__ import annotations
 
