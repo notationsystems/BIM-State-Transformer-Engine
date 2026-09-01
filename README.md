@@ -853,7 +853,7 @@ None of this is assumed correct. The v0 implementation exists to discover **whic
 
 ## License
 
-TBD.
+MIT — see [LICENSE](LICENSE).
 
 ## Project Status
 
