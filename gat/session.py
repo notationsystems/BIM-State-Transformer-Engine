@@ -48,6 +48,8 @@ class GatSession:
         self.trace = ExecutionTrace()
         self.imported_trace: list = []
         self.ledger = ExecutionLedger.genesis(world)
+        self.carrier_signature_verified = False
+        self.carrier_signing_key_id: str | None = None
         report = run_invariants(world)
         self.trace.add(
             "compile",
@@ -125,6 +127,8 @@ class GatSession:
                 },
             )
         )
+        session.carrier_signature_verified = loaded.signature.verified
+        session.carrier_signing_key_id = loaded.signature.key_id
         session.trace = ExecutionTrace(list(loaded.trace_events))
         trust = (
             f", signature verified by {loaded.signature.key_id}"

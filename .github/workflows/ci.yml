@@ -34,3 +34,6 @@ jobs:
 
       - name: Run the USD interchange demo (self-asserting)
         run: python -m gat.demo.usd ci-out
+
+      - name: Run the construction workflow demo (self-asserting)
+        run: python -m gat.demo.workflow

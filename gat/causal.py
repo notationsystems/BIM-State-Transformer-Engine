@@ -14,11 +14,15 @@ from enum import StrEnum
 import hashlib
 import json
 import re
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
 
 from gat.engine.decision import DecisionAssessment, DecisionEvidencePlan
 from gat.geometry.assurance import ClearanceAssessment, ClearanceEvidencePlan
 from gat.ids import VarId
+
+if TYPE_CHECKING:  # pragma: no cover
+    from gat.workflows.acceptance import AcceptanceOutcome
+    from gat.workflows.change_impact import ChangeImpactReport
 
 
 _DIGEST_RE = re.compile(r"[0-9a-f]{64}\Z")
@@ -401,7 +405,108 @@ def clearance_policy_record(
     )
 
 
+def acceptance_assessment_record(
+    outcome: "AcceptanceOutcome",
+    assessment_id: str | None = None,
+) -> AssessmentRecord:
+    """Encode a case disposition without turning it into an approval."""
+    details = {
+        "case_digest": outcome.case.scope_digest,
+        "workflow": outcome.case.workflow.value,
+        "policy_id": outcome.policy_id,
+        "checks": [
+            {
+                "check_id": check.check_id,
+                "kind": check.kind.value,
+                "verdict": check.verdict.value,
+                "p_satisfies_lower": check.p_satisfies_lower,
+                "p_satisfies_upper": check.p_satisfies_upper,
+            }
+            for check in outcome.case.checks
+        ],
+        "rejected_check_ids": list(outcome.rejected_check_ids),
+        "unresolved_check_ids": list(outcome.unresolved_check_ids),
+        "uncovered_check_ids": list(outcome.uncovered_check_ids),
+        "evidence_receipt_ids": list(outcome.evidence_receipt_ids),
+    }
+    return AssessmentRecord(
+        outcome.case.world_digest,
+        assessment_id or _stable_id("acceptance", details),
+        "construction-acceptance",
+        outcome.case.subject,
+        outcome.disposition.value,
+        "case-acceptance-v1",
+        None,
+        details,
+    )
+
+
+def acceptance_policy_record(
+    outcome: "AcceptanceOutcome",
+    policy_event_id: str | None = None,
+) -> PolicyRecord:
+    """Encode the evidence request/stop policy selected for a case."""
+    details = {
+        "case_digest": outcome.case.scope_digest,
+        "workflow": outcome.case.workflow.value,
+        "acceptance_policy_id": outcome.policy_id,
+        "requests": [
+            {
+                "check_id": request.check_id,
+                "action": request.action,
+                "target": request.target,
+                "priority": request.priority,
+            }
+            for request in outcome.evidence_requests
+        ],
+    }
+    selected = (
+        None
+        if not outcome.evidence_requests
+        else f"{outcome.evidence_requests[0].action}:"
+        f"{outcome.evidence_requests[0].target}"
+    )
+    return PolicyRecord(
+        outcome.case.world_digest,
+        policy_event_id or _stable_id("acceptance-policy", details),
+        "construction-acceptance-routing",
+        outcome.disposition.value,
+        selected,
+        None,
+        details,
+    )
+
+
+def change_impact_assessment_record(
+    report: "ChangeImpactReport",
+    assessment_id: str | None = None,
+) -> AssessmentRecord:
+    """Encode a non-mutating RFI preview bound to its exact prior world."""
+    details = {
+        "scope_digest": report.scope_digest,
+        "candidate_world_digest": report.candidate_world_digest,
+        "transformation": report.transformation_payload,
+        "targets": [str(var) for var in report.targets],
+        "affected": [str(var) for var in report.affected],
+        "impacted_entities": list(report.impacted_entities),
+        "failure_ids": [item.invariant_id for item in report.failures],
+        "warning_ids": [item.invariant_id for item in report.warnings],
+    }
+    return AssessmentRecord(
+        report.prior_world_digest,
+        assessment_id or _stable_id("change-impact", details),
+        "design-change-impact",
+        report.transformation.describe(),
+        report.disposition.value,
+        "execution-preview-v1",
+        None,
+        details,
+    )
+
+
 __all__ = [
+    "acceptance_assessment_record",
+    "acceptance_policy_record",
     "ApprovalDecision",
     "ApprovalRecord",
     "AssessmentRecord",
@@ -412,6 +517,7 @@ __all__ = [
     "PolicyRecord",
     "clearance_assessment_record",
     "clearance_policy_record",
+    "change_impact_assessment_record",
     "decision_assessment_record",
     "decision_policy_record",
     "decode_causal_record",

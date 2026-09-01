@@ -21,6 +21,9 @@ classifiers = [
 ]
 dependencies = ["numpy>=1.24"]
 
+[project.scripts]
+gat-headless = "gat.headless:main"
+
 [project.optional-dependencies]
 openusd = ["usd-core>=26.8,<27", "cryptography>=40"]
 
