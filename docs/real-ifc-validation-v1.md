@@ -1,7 +1,7 @@
 # Real-IFC validation v1
 
-Status: implemented audit boundary and measured baseline; adapter hardening is
-the next phase.
+Status: implemented audit boundary, measured baseline, and SI length-unit
+normalization; geometry-quantity derivation is the next adapter phase.
 
 ## Why this exists
 
@@ -42,7 +42,8 @@ It includes:
 - required, available, and missing quantities;
 - whether a geometry representation exists from which a future adapter could
   derive missing quantities;
-- length-unit kind, prefix, and scale to metres;
+- active project length-unit kind, prefix, scale to metres, and whether
+  normalization is required;
 - placement incompatibilities without stopping the rest of the inventory;
 - separate lowering, compilation, and verification stage results; and
 - an explicit assurance statement that the audit cannot authorize decisions.
@@ -76,17 +77,28 @@ baseline is pinned and can be reproduced with `--include-large`.
 | buildingSMART PCERT Building Architecture | 7 | 4 `READY`; 2 need geometry derivation; 1 lacks a fallback. |
 | Schependomlaan as-planned IFC2x3 | 1,086 | 1,022 need geometry derivation; 63 also have unsupported placements; 1 lacks a fallback. |
 
-All three public models declare millimetres. The current authoritative loader
-rejects them before numerical state construction because it accepts only
-unprefixed SI metres. Schependomlaan contains one storey, 880 walls, and 205
-doors in GAT's current class scope. Every one of those 1,086 products lacks at
-least one quantity required by the v0 state contract; 1,022 expose geometry
-that can be used by a future derivation adapter.
+All three public models declare millimetres. The authoritative loader now
+resolves the active `IfcProject.UnitsInContext`, converts SI-prefixed source
+lengths into canonical metres, and carries the source scale into export.
+Their audits therefore progress beyond the former unit gate. Schependomlaan
+contains one storey, 880 walls, and 205 doors in GAT's current class scope.
+Every one of those 1,086 products still lacks at least one quantity required
+by the v0 state contract; 1,022 expose geometry that can be used by a future
+derivation adapter.
+
+The normalization boundary covers source-backed length quantities, local
+placement translations, authored length sigmas, and posterior means and
+sigmas written back to IFC. Default uncertainty policy is already expressed
+in canonical metres and is not scaled twice. SI metre prefixes are accepted;
+missing declarations retain the existing explicit assumed-metre warning.
+Conversion-based units remain fail-closed until their full
+`IfcMeasureWithUnit` chain is implemented and verified.
 
 This is the first empirical adapter result: the dominant next task is not a
-new decision subsystem. It is unit-aware geometry derivation, followed by full
-3D placement support. Multi-storey ownership remains a known limitation, but
-it was not the first blocker in these measured files.
+new decision subsystem. With source-unit normalization complete, it is
+geometry-derived quantities with explicit provenance, followed by full 3D
+placement support. Multi-storey ownership remains a known limitation, but it
+was not the first blocker in these measured files.
 
 ## Reproducing the corpus
 
@@ -106,10 +118,10 @@ silently download external data.
 
 ## Adapter-hardening order derived from the measurements
 
-1. Introduce an explicit unit-normalization context and prove metre-normalized
-   results against current metre-native fixtures.
-2. Add a geometry-quantity provider behind the existing lowering boundary,
-   initially for the swept/extruded solids seen in the pinned corpus.
+1. **Completed:** resolve the active project SI length unit; prove equivalent
+   metre-normalized state, placement, covariance, and source-unit round trips.
+2. **Next:** add a geometry-quantity provider behind the existing lowering
+   boundary, initially for the swept/extruded solids seen in the pinned corpus.
 3. Attach provenance to every derived quantity: source representation ids,
    algorithm version, unit scale, and uncertainty policy.
 4. Support general rigid 3D placement composition and test the 63 measured

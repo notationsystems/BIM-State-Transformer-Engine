@@ -34,7 +34,21 @@ class PublicIfcCorpusTests(unittest.TestCase):
                 self.assertEqual(len(report.entities), expected["supported_product_count"])
                 self.assertEqual(dict(actual_statuses), expected["status_counts"])
                 self.assertEqual(dict(report.issue_counts), expected["issue_counts"])
-                self.assertFalse(report.to_dict()["assurance"]["audit_authorizes_decisions"])
+                self.assertEqual(len(report.length_units), 1)
+                self.assertEqual(
+                    report.length_units[0].scale_to_metres,
+                    expected["length_scale_to_metres"],
+                )
+                self.assertEqual(
+                    report.length_units[0].to_dict()["normalization_required"],
+                    expected["length_unit_normalization_required"],
+                )
+                self.assertTrue(
+                    report.length_units[0].accepted_by_current_adapter
+                )
+                self.assertFalse(
+                    report.to_dict()["assurance"]["audit_authorizes_decisions"]
+                )
 
 
 if __name__ == "__main__":

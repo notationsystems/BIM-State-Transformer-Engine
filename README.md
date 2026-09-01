@@ -90,10 +90,16 @@ python -m unittest discover   # the test suite
 
 `gat audit` inventories an unfamiliar IFC without weakening the authoritative
 loader or silently skipping unsupported entities. It continues past the first
-preflight problem, reports unit normalization, missing quantities, available
-geometry fallbacks, placement limitations, and the real lower/compile/verify
-outcome, and binds the report to the input bytes. An audit never authorizes a
-decision.
+preflight problem, reports the active project unit context, missing quantities,
+available geometry fallbacks, placement limitations, and the real
+lower/compile/verify outcome, and binds the report to the input bytes. An audit
+never authorizes a decision.
+
+The loader now normalizes recognized SI-prefixed IFC length quantities,
+placement translations, and authored sigmas into GAT's canonical metre state.
+IFC export reverses that boundary so posterior means and sigmas retain the
+source project's unit convention. Conversion-based length units remain
+fail-closed pending complete conversion-chain support.
 
 The commit-pinned public corpus now runs in CI. Measured results include the
 buildingSMART PCERT architecture scene and the 65 MB Schependomlaan model:

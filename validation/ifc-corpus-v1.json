@@ -6,9 +6,10 @@
       "destination": "buildingSMART-wall-opening-window.ifc",
       "expected": {
         "issue_counts": {
-          "LENGTH_UNIT_NORMALIZATION_REQUIRED": 1,
           "MISSING_REQUIRED_QUANTITY": 3
         },
+        "length_scale_to_metres": 0.001,
+        "length_unit_normalization_required": true,
         "pipeline_ready": false,
         "schema": "IFC4",
         "status_counts": {
@@ -31,9 +32,10 @@
       "destination": "buildingSMART-PCERT-Building-Architecture.ifc",
       "expected": {
         "issue_counts": {
-          "LENGTH_UNIT_NORMALIZATION_REQUIRED": 1,
           "MISSING_REQUIRED_QUANTITY": 3
         },
+        "length_scale_to_metres": 0.001,
+        "length_unit_normalization_required": true,
         "pipeline_ready": false,
         "schema": "IFC4",
         "status_counts": {
@@ -57,10 +59,11 @@
       "destination": "Schependomlaan-planning.ifc",
       "expected": {
         "issue_counts": {
-          "LENGTH_UNIT_NORMALIZATION_REQUIRED": 1,
           "MISSING_REQUIRED_QUANTITY": 1086,
           "UNSUPPORTED_PLACEMENT": 63
         },
+        "length_scale_to_metres": 0.001,
+        "length_unit_normalization_required": true,
         "pipeline_ready": false,
         "schema": "IFC2X3",
         "status_counts": {
