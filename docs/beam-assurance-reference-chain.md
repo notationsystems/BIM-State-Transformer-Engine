@@ -27,7 +27,7 @@ python -m gat.demo.beam_assurance out/beam
 | IFC beam | `IfcBeam:GATBEAMELEMENT00000100` / `Beam-B1` |
 | Raw state | `YieldStrengthMPa`, `SectionModulusM3`, and `Length` `VarId`s |
 | Derived state | `NominalMomentCapacity` and `DesignMomentCapacity` `VarId`s |
-| Evidence | `CalibratedObservation` with kind, subject, unit, likelihood sigma, source digest, method, calibration digest, and evidence digest |
+| Evidence | Strict `gat-material-certificate-observation-v1` ingestion produces a `CalibratedObservation` while preserving certificate, issuer, specimen, subject, likelihood, calibration, and source identities. |
 | State transition | `ObserveQuantity` in the closed ledger transformation algebra |
 | Engineering computation | `elastic-section-yield-v1` plus model, dependency, validation, and result digests |
 | Decision | Gaussian minimum-capacity assessment at a declared demand and confidence |
@@ -48,6 +48,13 @@ ResistanceFactor
 ```
 
 Missing or invalid fields fail closed.
+
+The certificate reader rejects unknown and duplicate JSON fields, unsupported
+property/unit pairs, non-finite values, non-positive uncertainty, and subject
+mismatch. It preserves the exact source-byte digest and records that issuer
+trust, signature validation, revocation checking, and decision authorization
+have not yet been established. Ingestion makes the claim computable; it does
+not make the issuer trusted or the resulting decision professionally approved.
 
 ## Calculation and decision
 
@@ -101,6 +108,14 @@ subject are rejected before conditioning. An LLM may propose or extract a
 claim, but it cannot bypass this calibrated evidence boundary or perform the
 engineering calculation.
 
+The public IFC geometry provider is likewise non-authorizing. It derives beam
+axis length from `Curve2D` polylines and area plus centroidal elastic section
+moduli from `IfcExtrudedAreaSolid` arbitrary closed composite profiles. Every
+quantity records source IFC digest, STEP representation ids, unit scale,
+algorithm version, arc-discretization policy, and a numerical discretization
+error. Unsupported bodies remain explicit partial results rather than guessed
+properties.
+
 ## Emitted artifacts
 
 | File | Purpose |
@@ -127,12 +142,14 @@ and real backend verification. Digest binding alone must continue to report
 
 ## Limits
 
-This is not a code-complete structural design check. It does not model load
+This is not a code-complete structural design check. The shipped certificate
+is schema-realistic but is not a field-issued or independently authenticated
+document. The public clinic IFC contains no certificate that authorizes a
+structural decision. The calculation does not model load
 combinations, section classification, local or lateral-torsional buckling,
 shear, deflection, connections, fire, fatigue, code resistance rules, model
-form error, or professional approval. The material certificate is a shipped
-fixture. First-order Gaussian propagation may be unsuitable for strongly
-nonlinear or non-Gaussian cases.
+form error, or professional approval. First-order Gaussian propagation may be
+unsuitable for strongly nonlinear or non-Gaussian cases.
 
 Those limits are part of the result. The artifact demonstrates trustworthy
 identity and transformation semantics for one bounded calculation; it does

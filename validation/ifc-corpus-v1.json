@@ -58,6 +58,16 @@
       "ci": true,
       "destination": "buildingSMART-Clinic-Structural.ifc",
       "expected": {
+        "beam_geometry_quantity_counts": {
+          "CrossSectionArea": 277,
+          "Length": 738,
+          "SectionModulusMajorM3": 277,
+          "SectionModulusMinorM3": 277
+        },
+        "beam_geometry_status_counts": {
+          "COMPLETE": 277,
+          "LENGTH_ONLY": 461
+        },
         "instance_count": 317671,
         "issue_counts": {
           "MISSING_REQUIRED_QUANTITY": 37,
