@@ -55,6 +55,47 @@
       "url": "https://raw.githubusercontent.com/buildingSMART/Sample-Test-Files/e6f1c1d80ac216e1c1d6f88d4650f13d8c8277b7/IFC%204.0.2.1%20(IFC%204)/PCERT-Sample-Scene/Building-Architecture.ifc"
     },
     {
+      "ci": true,
+      "destination": "buildingSMART-Clinic-Structural.ifc",
+      "expected": {
+        "instance_count": 317671,
+        "issue_counts": {
+          "MISSING_REQUIRED_QUANTITY": 37,
+          "UNSUPPORTED_STOREY_COUNT": 1
+        },
+        "length_scale_to_metres": 1.0,
+        "length_unit_normalization_required": false,
+        "opt_in_product_candidate_counts": {
+          "IFCBEAM": 738
+        },
+        "pipeline_lowering_error_type": "LoweringError",
+        "pipeline_lowering_status": "BLOCKED",
+        "pipeline_ready": false,
+        "schema": "IFC2X3",
+        "status_counts": {
+          "MISSING_SOURCE_DATA": 4,
+          "NEEDS_GEOMETRY_DERIVATION": 33
+        },
+        "supported_product_count": 37,
+        "type_counts": {
+          "IFCBEAM": 738,
+          "IFCBUILDINGSTOREY": 4,
+          "IFCCOLUMN": 195,
+          "IFCSLAB": 13
+        }
+      },
+      "id": "buildingsmart-community-medical-dental-clinic-structural-ifc2x3",
+      "license": "CC-BY-4.0",
+      "repository": "https://github.com/buildingsmart-community/Community-Sample-Test-Files",
+      "repository_commit": "7ddf57a201f88a0c213d5322b02ed15e94a60a40",
+      "sha256": "325287b375f154dc79504c4bbf67b40c501f458f23a8c4ba13b27171e00533d8",
+      "size_bytes": 19058175,
+      "source_path": "IFC 2.3.0.1 (IFC 2x3)/Medical-Dental Clinic/Clinic_Structural.ifc",
+      "url": "https://media.githubusercontent.com/media/buildingsmart-community/Community-Sample-Test-Files/7ddf57a201f88a0c213d5322b02ed15e94a60a40/IFC%202.3.0.1%20(IFC%202x3)/Medical-Dental%20Clinic/Clinic_Structural.ifc",
+      "use_case": "multi-storey-structural-beam",
+      "validation_status": "MEASURED_REAL_STRUCTURAL_BASELINE"
+    },
+    {
       "ci": false,
       "destination": "Schependomlaan-planning.ifc",
       "expected": {

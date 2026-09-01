@@ -66,25 +66,27 @@ entity and dependency is covered. Partial ingestion may never produce
 
 The manifest at `validation/ifc-corpus-v1.json` pins repository commits,
 artifact SHA-256 digests, sizes, URLs, expected audit results, and CC-BY-4.0
-licensing. The two small buildingSMART fixtures run in CI. Schependomlaan is
-kept out of routine CI because it is a 65 MB Git LFS artifact, but its measured
-baseline is pinned and can be reproduced with `--include-large`.
+licensing. The two small buildingSMART fixtures and the 19 MB Medical–Dental
+Clinic structural model run in CI. Schependomlaan is kept out of routine CI
+because it is a 65 MB Git LFS artifact, but its measured baseline is pinned and
+can be reproduced with `--include-large`.
 
 | Model | Exact supported products | Measured result |
 | --- | ---: | --- |
 | Shipped two-office model | 10 | 10 `READY`; full pipeline passes. |
 | buildingSMART wall/opening/window Reference View | 3 | 2 need geometry derivation; 1 lacks a fallback. |
 | buildingSMART PCERT Building Architecture | 7 | 4 `READY`; 2 need geometry derivation; 1 lacks a fallback. |
+| buildingSMART Medical–Dental Clinic Structural | 37 in current architectural scope; 738 beam candidates | 33 need geometry derivation; 4 storeys lack clear height; multi-storey lowering remains blocked. |
 | Schependomlaan as-planned IFC2x3 | 1,086 | 1,022 need geometry derivation; 63 also have unsupported placements; 1 lacks a fallback. |
 
-All three public models declare millimetres. The authoritative loader now
-resolves the active `IfcProject.UnitsInContext`, converts SI-prefixed source
-lengths into canonical metres, and carries the source scale into export.
-Their audits therefore progress beyond the former unit gate. Schependomlaan
-contains one storey, 880 walls, and 205 doors in GAT's current class scope.
-Every one of those 1,086 products still lacks at least one quantity required
-by the v0 state contract; 1,022 expose geometry that can be used by a future
-derivation adapter.
+The two small IFC4 fixtures and Schependomlaan declare millimetres; the clinic
+structural model declares metres. The authoritative loader resolves the active
+`IfcProject.UnitsInContext`, converts SI-prefixed source lengths into canonical
+metres, and carries the source scale into export. Their audits therefore
+progress beyond the former unit gate. Schependomlaan contains one storey, 880
+walls, and 205 doors in GAT's current class scope. Every one of those 1,086
+products still lacks at least one quantity required by the v0 state contract;
+1,022 expose geometry that can be used by a future derivation adapter.
 
 The normalization boundary covers source-backed length quantities, local
 placement translations, authored length sigmas, and posterior means and
@@ -94,11 +96,19 @@ missing declarations retain the existing explicit assumed-metre warning.
 Conversion-based units remain fail-closed until their full
 `IfcMeasureWithUnit` chain is implemented and verified.
 
+The clinic model is the first measured structural boundary. It contains
+317,671 IFC instances, 4 storeys, 738 beams, 195 columns, and 13 slabs. GAT
+parses the complete file, inventories all 738 beams as candidates for explicit
+`GAT_Structural` opt-in, and refuses to claim a structural verdict:
+the source has no GAT evidence marker, the current architectural lowering
+contract requires one storey, and the storeys do not provide `ClearHeight`.
+That fail-closed result is now a CI baseline rather than an anecdotal manual
+run.
+
 This is the first empirical adapter result: the dominant next task is not a
 new decision subsystem. With source-unit normalization complete, it is
-geometry-derived quantities with explicit provenance, followed by full 3D
-placement support. Multi-storey ownership remains a known limitation, but it
-was not the first blocker in these measured files.
+geometry-derived beam quantities and certificate ingestion with explicit
+provenance, followed by multi-storey ownership and full 3D placement support.
 
 ## Reproducing the corpus
 
@@ -120,13 +130,16 @@ silently download external data.
 
 1. **Completed:** resolve the active project SI length unit; prove equivalent
    metre-normalized state, placement, covariance, and source-unit round trips.
-2. **Next:** add a geometry-quantity provider behind the existing lowering
-   boundary, initially for the swept/extruded solids seen in the pinned corpus.
-3. Attach provenance to every derived quantity: source representation ids,
+2. **Next:** add a beam geometry-quantity provider behind the existing
+   lowering boundary, initially for the swept/extruded and mapped profiles in
+   the clinic model.
+3. Ingest material certificates as typed observations, preserving issuer,
+   specimen/batch identity, calibration, units, and source digest.
+4. Attach provenance to every derived quantity: source representation ids,
    algorithm version, unit scale, and uncertainty policy.
-4. Support general rigid 3D placement composition and test the 63 measured
+5. Add storey-local ownership and support general rigid 3D placement
+   composition; test both the clinic boundary and the 63 measured
    Schependomlaan failures.
-5. Add storey-local dependency ownership using separate multi-storey fixtures.
-6. Only then admit a real-model decision scope into clearance acceptance.
+6. Only then admit a real-model structural decision scope into beam assurance.
 
 No tolerance mode should bypass these steps by silently dropping entities.
