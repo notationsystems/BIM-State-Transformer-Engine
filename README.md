@@ -73,6 +73,7 @@ Tests use stdlib `unittest`.
 ```bash
 pip install numpy
 pip install ".[openusd]"       # optional Pixar OpenUSD carrier
+gat audit path/to/model.ifc --text  # non-mutating IFC compatibility audit
 python -m gat.demo            # the state-propagation milestone (README §17)
 python -m gat.demo.geometry   # the geometric Gaussian layer
 python -m gat.demo.active_inference  # choose, then assimilate, the next observation
@@ -84,6 +85,23 @@ python -m gat.demo.workflow          # opening acceptance + non-mutating RFI pre
 gat-headless request.json -o response.json  # read-only workflow boundary
 python -m unittest discover   # the test suite
 ```
+
+### Real-IFC validation
+
+`gat audit` inventories an unfamiliar IFC without weakening the authoritative
+loader or silently skipping unsupported entities. It continues past the first
+preflight problem, reports unit normalization, missing quantities, available
+geometry fallbacks, placement limitations, and the real lower/compile/verify
+outcome, and binds the report to the input bytes. An audit never authorizes a
+decision.
+
+The commit-pinned public corpus now runs in CI. Measured results include the
+buildingSMART PCERT architecture scene and the 65 MB Schependomlaan model:
+Schependomlaan exposes 1,086 products in GAT's current scope, of which 1,022
+have geometry suitable for a future quantity-derivation adapter and 63 also
+require broader placement support. See
+[`docs/real-ifc-validation-v1.md`](docs/real-ifc-validation-v1.md) for the
+reproducible corpus, exact failure taxonomy, and adapter-hardening order.
 
 ```python
 from gat import GatSession, SetParameter, ObserveQuantity
@@ -169,9 +187,10 @@ Key semantics, fixed by design review:
 * **Differentiable layout** — cost/daylight/energy objectives with exact DAG gradients, chance-constraint penalties sharing the compliance margins, closed-form Gaussian ray transmittance with forward-mode dual-number gradient witnesses; results commit through ordinary verified interventions.
 * **Splat interoperability** — the scene exports to the standard 3D Gaussian Splatting PLY layout (positions, quaternions, log-scales, SH DC color by semantic class), loadable in stock 3DGS viewers.
 
-### OpenUSD state-space interchange
+### Zero-dependency USDA interchange proof
 
-`python -m gat.demo.usd` runs the interchange "killer test": not *USD export*, but
+`python -m gat.demo.usd` runs the original interchange "killer test" through a
+hand-written USDA subset: not merely *USD export*, but
 
 > **Computational World → OpenUSD → Computational World**
 
@@ -182,6 +201,12 @@ S2_transferred ≃ S2_continuous     (posterior mean and covariance BITWISE equa
 ```
 
 All eight transfer levels — geometry, BIM semantics, topology, Gaussian state, computational state, transformation semantics, provenance, and operational state-space equivalence — pass in the shipped demo and test suite (`tests/test_usd_interchange.py`).
+
+This adapter is the frozen, NumPy-only fallback and executable proof. It is not
+the canonical production carrier and will not receive new carrier features.
+`GatStateSnapshot` plus the native OpenUSD carrier described below are the two
+canonical restart paths; native OpenUSD is the scene-graph and signed-ledger
+bridge for Blender, Omniverse, and other USD hosts.
 
 ### Analysis APIs
 
@@ -454,6 +479,7 @@ See [`docs/openusd-carrier-v0.md`](docs/openusd-carrier-v0.md) for the contract.
 * Covariance propagation is first-order (means are exact); the validity regime (mm-scale sigmas on m-scale dimensions) is stated where it matters.
 * Determinism is guaranteed as same-platform byte identity; cross-platform agreement is tolerance-level (BLAS reduction order).
 * The v0 IFC adapter reads dimensional quantities and placements, not solid-model geometry — an explicit adapter-boundary decision (§12), swappable without touching the engine.
+* The hand-written USDA interchange adapter is a zero-dependency fallback. JSON snapshots and the native, optionally signed OpenUSD carrier are the canonical restart formats.
 * Gaussian overlap is a proxy for boolean geometry; clash scores are calibrated probabilities of the *modeled* clearance event, and the void-blindness of Gaussianized walls (openings are not subtracted) is a known v0 limit.
 * The scan likelihood assumes the selected BIM support is locally a planar box face and freezes responsibility assignments for its first-order update. Edge/corner witnesses are rejected; richer mesh/plane latent variables and nonlinear posterior checks remain future work.
 * Snapshot v1 and its OpenUSD carrier require a compatible `gat-world-v1` runtime and a closed,

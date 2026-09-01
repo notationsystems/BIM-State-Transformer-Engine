@@ -1,0 +1,84 @@
+{
+  "format": "gat-ifc-validation-corpus-v1",
+  "models": [
+    {
+      "ci": true,
+      "destination": "buildingSMART-wall-opening-window.ifc",
+      "expected": {
+        "issue_counts": {
+          "LENGTH_UNIT_NORMALIZATION_REQUIRED": 1,
+          "MISSING_REQUIRED_QUANTITY": 3
+        },
+        "pipeline_ready": false,
+        "schema": "IFC4",
+        "status_counts": {
+          "MISSING_SOURCE_DATA": 1,
+          "NEEDS_GEOMETRY_DERIVATION": 2
+        },
+        "supported_product_count": 3
+      },
+      "id": "buildingsmart-reference-wall-opening-window-ifc4",
+      "license": "CC-BY-4.0",
+      "repository": "https://github.com/buildingSMART/Sample-Test-Files",
+      "repository_commit": "e6f1c1d80ac216e1c1d6f88d4650f13d8c8277b7",
+      "sha256": "73b0e45d931d5dc13bfee5fdc7bd80f796526445458b2de74c4168d209097832",
+      "size_bytes": 12492,
+      "source_path": "IFC 4.0.2.1 (IFC 4)/ISO Spec - ReferenceView_V1.2/wall-with-opening-and-window.ifc",
+      "url": "https://raw.githubusercontent.com/buildingSMART/Sample-Test-Files/e6f1c1d80ac216e1c1d6f88d4650f13d8c8277b7/IFC%204.0.2.1%20(IFC%204)/ISO%20Spec%20-%20ReferenceView_V1.2/wall-with-opening-and-window.ifc"
+    },
+    {
+      "ci": true,
+      "destination": "buildingSMART-PCERT-Building-Architecture.ifc",
+      "expected": {
+        "issue_counts": {
+          "LENGTH_UNIT_NORMALIZATION_REQUIRED": 1,
+          "MISSING_REQUIRED_QUANTITY": 3
+        },
+        "pipeline_ready": false,
+        "schema": "IFC4",
+        "status_counts": {
+          "MISSING_SOURCE_DATA": 1,
+          "NEEDS_GEOMETRY_DERIVATION": 2,
+          "READY": 4
+        },
+        "supported_product_count": 7
+      },
+      "id": "buildingsmart-pcert-building-architecture-ifc4",
+      "license": "CC-BY-4.0",
+      "repository": "https://github.com/buildingSMART/Sample-Test-Files",
+      "repository_commit": "e6f1c1d80ac216e1c1d6f88d4650f13d8c8277b7",
+      "sha256": "3ff9b10bd00c7b96dded51e7ca5a6b69efbea38b049adcdd05fcd247de7e70d5",
+      "size_bytes": 225635,
+      "source_path": "IFC 4.0.2.1 (IFC 4)/PCERT-Sample-Scene/Building-Architecture.ifc",
+      "url": "https://raw.githubusercontent.com/buildingSMART/Sample-Test-Files/e6f1c1d80ac216e1c1d6f88d4650f13d8c8277b7/IFC%204.0.2.1%20(IFC%204)/PCERT-Sample-Scene/Building-Architecture.ifc"
+    },
+    {
+      "ci": false,
+      "destination": "Schependomlaan-planning.ifc",
+      "expected": {
+        "issue_counts": {
+          "LENGTH_UNIT_NORMALIZATION_REQUIRED": 1,
+          "MISSING_REQUIRED_QUANTITY": 1086,
+          "UNSUPPORTED_PLACEMENT": 63
+        },
+        "pipeline_ready": false,
+        "schema": "IFC2X3",
+        "status_counts": {
+          "BLOCKED": 63,
+          "MISSING_SOURCE_DATA": 1,
+          "NEEDS_GEOMETRY_DERIVATION": 1022
+        },
+        "supported_product_count": 1086
+      },
+      "id": "schependomlaan-as-planned-ifc2x3",
+      "license": "CC-BY-4.0",
+      "repository": "https://github.com/buildingsmart-community/Community-Sample-Test-Files",
+      "repository_commit": "7ddf57a201f88a0c213d5322b02ed15e94a60a40",
+      "sha256": "57fafa59f03b18c05be211a456e346bdd0445d5c35d66522e598d339e81dfcf4",
+      "size_bytes": 65078748,
+      "source_path": "IFC 2.3.0.1 (IFC 2x3)/Schependomlaan/As Planned models/IFC Schependomlaan incl planningsdata.ifc",
+      "url": "https://media.githubusercontent.com/media/buildingsmart-community/Community-Sample-Test-Files/7ddf57a201f88a0c213d5322b02ed15e94a60a40/IFC%202.3.0.1%20(IFC%202x3)/Schependomlaan/As%20Planned%20models/IFC%20Schependomlaan%20incl%20planningsdata.ifc",
+      "validation_status": "MEASURED_LOCAL_BASELINE"
+    }
+  ]
+}
