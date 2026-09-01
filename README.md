@@ -162,7 +162,7 @@ GAT v0 treats one object — **the evolving architectural state** — and implem
 | Epistemic identity | What kind of claim entered state, and from which source? | Typed calibrated evidence | `gat/evidence.py` | implemented (`MEASURED`, `ESTIMATED`, `INFERRED`, `ASSUMED`, `SIMULATED`, `DERIVED`) |
 | Portability | Can computation resume across a runtime boundary? | Restartable state snapshot + operational equivalence | `gat/state_snapshot.py`, `gat/adapters/openusd.py` | implemented (JSON and OpenUSD carriers) |
 | History | Can the evolution be independently reproduced? | Closed, hash-chained accepted/rejected event ledger | `gat/ledger.py` | implemented (schema v1 + exact replay) |
-| Computational integrity | Can an external proof system attest one exact accepted transition? | Proof-carrying state-transition manifest | `gat/proof_manifest.py` | implemented (backend-neutral binding; cryptographic verifier optional) |
+| Computational integrity | Can an external proof system attest one exact accepted transition and bounded calculation? | Proof-carrying state-transition manifest plus checked beam guest | `gat/proof_manifest.py`, `gat/sp1_beam.py`, `sp1/beam/` | implemented for fixed-point F2-1 beam arithmetic; backend-neutral binding remains reusable |
 | Causality | What was assessed, selected, approved, or done without changing belief? | Typed state-bound causal events | `gat/causal.py` | implemented (closed records + lifecycles) |
 | Inference | What state explains the evidence? | Bayesian conditioning | `gat/gaussian/condition.py` | implemented (linearized observations) |
 | State | What do we currently believe? | Gaussian state μ, Σ | `gat/gaussian/` | implemented |
@@ -468,7 +468,7 @@ complete identity-preserving engineering chain:
 IfcBeam -> canonical raw/derived state -> typed material certificate
   -> Gaussian conditioning -> deterministic bending capacity
   -> SATISFIED/VIOLATED -> state-bound assessment -> replay/snapshot
-  -> optional SP1 request (BACKEND_REQUIRED; no proof claimed)
+  -> checked fixed-point beam claim -> optional SP1 v6.5.0 proof
 ```
 
 The shipped beam starts at `fy = 350 +/- 8 MPa`, plastic section modulus
@@ -489,6 +489,14 @@ state snapshot, ledger, summary, and proof request let another runtime replay,
 verify, and continue the exact belief. See
 [`docs/beam-assurance-reference-chain.md`](docs/beam-assurance-reference-chain.md)
 for the contracts and explicit limitations.
+
+The base demo writes the exact request without claiming a proof. The dedicated
+Linux/macOS path, `python -m gat.demo.beam_sp1`, builds on the same chain to
+generate a core proof, verify it in SP1, bind it into GAT's backend-neutral
+manifest, and invoke the backend verifier again. Its scope is only the checked
+fixed-point mean-value F2-1 calculation; it does not prove the Gaussian update,
+evidence truth, code applicability, or professional acceptance. See
+[`docs/sp1-beam-guest-v1.md`](docs/sp1-beam-guest-v1.md).
 
 The material observation is read through a strict, versioned certificate
 contract that preserves issuer, batch, specimen, calibration, and exact source
@@ -516,32 +524,38 @@ digest, but only when a later state-bound assessment in the same ledger records
 that exact digest.
 
 ```python
-from hashlib import sha256
 from gat import (
-    NumericContract,
+    SP1_BEAM_MEDIA_TYPE,
+    SP1_BEAM_PROOF_SYSTEM,
+    SP1_BEAM_PROOF_TYPE,
     create_computation_proof_manifest,
+    read_ledger,
+    read_sp1_beam_receipt,
+    read_sp1_beam_request,
     verify_computation_proof_manifest,
 )
 
-numeric = NumericContract(
-    "clearance-micrometre-v1",
-    sha256(numeric_profile_bytes).hexdigest(),
-    "signed-fixed-point",
-    "nearest-ties-to-even",
-    "checked",
-)
+request = read_sp1_beam_request("out/beam/beam_sp1_request.json")
+receipt = read_sp1_beam_receipt("out/beam/beam_sp1_receipt.json")
+ledger = read_ledger("out/beam/beam_ledger.json")
+proof_bytes = open("out/beam/beam.sp1-proof", "rb").read()
 manifest = create_computation_proof_manifest(
-    session.ledger,
-    event_seq=len(session.ledger.events) - 1,
-    numeric_contract=numeric,
-    model_contract_digest=sha256(engineering_contract_bytes).hexdigest(),
-    validation_profile_digest=sha256(validation_profile_bytes).hexdigest(),
-    computation_result_digest=engineering_result.computation_digest,  # optional
-    proof_system="sp1",
-    proof_type="groth16",
-    program_digest=sha256(guest_elf).hexdigest(),
-    verifying_key_digest=sha256(verifying_key).hexdigest(),
+    ledger,
+    event_seq=request.transition_event_seq,
+    numeric_contract=request.numeric_contract,
+    model_contract_digest=request.claim.input.model_contract_digest,
+    validation_profile_digest=request.claim.input.validation_profile_digest,
+    computation_result_digest=request.claim.computation_digest,
+    evidence_commitments=(
+        request.claim.input.evidence_digest,
+        request.claim.input.evidence_source_digest,
+    ),
+    proof_system=SP1_BEAM_PROOF_SYSTEM,
+    proof_type=SP1_BEAM_PROOF_TYPE,
+    program_digest=receipt.program_digest,
+    verifying_key_digest=receipt.verifying_key_digest,
     proof_artifact=proof_bytes,
+    media_type=SP1_BEAM_MEDIA_TYPE,
 )
 
 # Binding alone is not proof verification. A host must supply the backend.
@@ -551,8 +565,10 @@ report = verify_computation_proof_manifest(
 assert report.proof_verified
 ```
 
-GAT does not include an SP1 runtime, fetch proof locators, infer privacy from a
-proof-type label, or authorize a building action because a proof verifies.
+GAT does not silently install an SP1 runtime, fetch proof locators, infer
+privacy from a proof-type label, or authorize a building action because a proof
+verifies. The repository's first real SP1 guest is an explicit pinned Rust/CI
+surface rather than an implicit Python dependency.
 See [`docs/proof-carrying-state-v1.md`](docs/proof-carrying-state-v1.md) for
 the statement, numerical and trust contracts.
 
@@ -1350,10 +1366,11 @@ GAT's adapter boundary (§12) is designed to meet the surrounding toolchain rath
 * [OpenUSD](https://openusd.org/) — GAT's first optional scene-graph carrier
   for the restartable state contract and derived geometry. It is an
   interoperability layer, not a replacement for the canonical runtime.
-* [SP1](https://github.com/succinctlabs/sp1) — the first intended external
-  verifier backend for proof-carrying GAT transitions. The core currently
-  defines and verifies the portable binding manifest only; it does not bundle
-  a zkVM, proving service, blockchain, or implicit confidentiality claim.
+* [SP1](https://github.com/succinctlabs/sp1) — the first implemented external
+  verifier backend for a proof-carrying GAT computation. The pinned bounded
+  beam guest proves checked fixed-point mean-capacity arithmetic and binds it
+  to the evidence transition through the portable manifest. It does not bundle
+  a proving service, blockchain, or implicit confidentiality claim.
 
 No claim is made that Gaussian representations are universally optimal for BIM.
 

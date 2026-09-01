@@ -120,3 +120,46 @@ jobs:
           gat inspect gat/demo/model.ifc --var "Level 1.TotalWallCost"
           gat splats gat/demo/model.ifc ci-out-splats --variations 2
           gat sample gat/demo/model.ifc --n 100
+
+  test-sp1-beam:
+    # SP1's native toolchain supports Linux/macOS.  This lane builds the real
+    # guest, executes it, generates a core proof, verifies it independently,
+    # and binds the resulting artifact back to the GAT ledger manifest.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install GAT
+        run: python -m pip install -e .
+
+      - name: Install native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install the pinned SP1 toolchain
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl -L https://sp1up.succinct.xyz | bash
+          "$HOME/.sp1/bin/sp1up" --token "$GITHUB_TOKEN" --version 6.5.0
+          echo "$HOME/.sp1/bin" >> "$GITHUB_PATH"
+
+      - name: Validate Python/Rust fixed-point agreement
+        run: cargo test --locked --manifest-path sp1/beam/Cargo.toml -p gat-sp1-beam-lib
+
+      - name: Build the SP1 guest and proof host
+        run: cargo build --locked --release --manifest-path sp1/beam/Cargo.toml -p gat-sp1-beam
+
+      - name: Generate and independently verify the ledger-bound beam proof
+        env:
+          SP1_PROVER: cpu
+        run: >-
+          python -m gat.demo.beam_sp1 ci-sp1-out
+          --executable sp1/beam/target/release/gat-sp1-beam
+          --timeout 2400

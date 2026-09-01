@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 
@@ -17,18 +16,13 @@ from gat.engineering import (
 )
 from gat.ledger import read_ledger, replay_ledger
 from gat.session import GatSession
+from gat.sp1_beam import (
+    build_sp1_beam_claim,
+    build_sp1_beam_request,
+    sp1_beam_assessment_record,
+    write_sp1_beam_request,
+)
 from gat.state_snapshot import computational_equivalence
-
-
-def _digest_json(value: object) -> str:
-    text = json.dumps(
-        value,
-        allow_nan=False,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    )
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -92,7 +86,7 @@ def run_beam_assurance(
         prior,
         revised,
     )
-    assessment_event = session.record_assessment(
+    session.record_assessment(
         beam_assessment_record(
             session.world,
             revised,
@@ -100,6 +94,24 @@ def run_beam_assurance(
             change=change,
         ),
         provenance={"phase": "post-evidence-engineering-verification"},
+    )
+    fixed_claim = build_sp1_beam_claim(session.world, revised, evidence)
+    fixed_assessment_event = session.record_assessment(
+        sp1_beam_assessment_record(
+            session.world,
+            revised,
+            evidence,
+            fixed_claim,
+        ),
+        provenance={
+            "phase": "sp1-bounded-fixed-point-claim",
+            "proof_status": "BACKEND_REQUIRED",
+        },
+    )
+    proof_request = build_sp1_beam_request(
+        session.ledger,
+        transition_event.seq,
+        fixed_claim,
     )
 
     ifc_path = output / "beam_posterior.ifc"
@@ -110,6 +122,7 @@ def run_beam_assurance(
     session.export_ifc(str(ifc_path))
     snapshot_digest = session.export_snapshot(str(snapshot_path))
     ledger_head = session.export_ledger(str(ledger_path))
+    write_sp1_beam_request(proof_request, proof_request_path)
 
     resumed = GatSession.load_snapshot(str(snapshot_path))
     equivalence = computational_equivalence(session.world, resumed.world)
@@ -119,55 +132,6 @@ def run_beam_assurance(
     resumed_result = BeamBendingEvaluator().evaluate(resumed.world, check)
     if resumed_result.computation_digest != revised.computation_digest:
         raise RuntimeError("receiving runtime produced a different beam computation")
-
-    numeric_profile = {
-        "profile_id": "beam-binary64-v1",
-        "arithmetic": "ieee754-binary64",
-        "rounding": "nearest-ties-to-even",
-        "overflow": "reject-nonfinite",
-        "calculation": "phi * 1e6 * fy * Z; Gaussian Jacobian pushforward",
-    }
-    proof_request = {
-        "format": "gat-sp1-computation-proof-request",
-        "schema_version": 1,
-        "status": "BACKEND_REQUIRED",
-        "proof_verified": False,
-        "reason": (
-            "No SP1 guest, verifying key, proof artifact, or backend verifier "
-            "was supplied; these commitments are proof-ready, not a proof."
-        ),
-        "claim_scope": "computational-integrity-only",
-        "ledger_head": ledger_head,
-        "transition": {
-            "event_seq": transition_event.seq,
-            "event_hash": transition_event.event_hash,
-            "prior_world_digest": transition_event.prior_world_digest,
-            "result_world_digest": transition_event.result_world_digest,
-            "operation_digest": _digest_json(transition_event.operation),
-            "verification_digest": transition_event.verification_digest,
-        },
-        "assessment": {
-            "event_seq": assessment_event.seq,
-            "event_hash": assessment_event.event_hash,
-            "computation_result_digest": revised.computation_digest,
-            "verdict": revised.verdict.value,
-        },
-        "engineering_context": {
-            "model_contract_digest": revised.model_contract_digest,
-            "validation_profile_digest": revised.validation_profile_digest,
-            "evidence_commitments": [evidence.digest(), evidence.source_digest],
-        },
-        "numeric_contract": {
-            **numeric_profile,
-            "profile_digest": _digest_json(numeric_profile),
-        },
-        "required_backend_commitments": {
-            "program_digest": None,
-            "verifying_key_digest": None,
-            "proof_artifact_digest": None,
-        },
-    }
-    _write_json(proof_request_path, proof_request)
 
     summary: dict[str, object] = {
         "chain": [
@@ -192,6 +156,7 @@ def run_beam_assurance(
             "ledger_head": ledger_head,
             "snapshot_digest": snapshot_digest,
             "computation_digest": revised.computation_digest,
+            "fixed_point_computation_digest": fixed_claim.computation_digest,
         },
         "belief_update": {
             "variable": str(fy),
@@ -230,6 +195,9 @@ def run_beam_assurance(
             ),
             "sp1_proof_status": "BACKEND_REQUIRED",
             "sp1_proof_verified": False,
+            "sp1_guest_implemented": True,
+            "sp1_fixed_assessment_event_seq": fixed_assessment_event.seq,
+            "sp1_public_statement_digest": proof_request.public_statement_digest,
         },
         "artifacts": {
             "posterior_ifc": ifc_path.name,
