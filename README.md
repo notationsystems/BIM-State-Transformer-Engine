@@ -135,6 +135,7 @@ GAT v0 treats one object — **the evolving architectural state** — and implem
 | Boundary | What can enter/leave the system? | Explicit evidence/action adapters | `gat/adapters/`, `gat/geometry/scan_io.py`, `gat/geometry/scan_likelihood.py` | implemented (IFC, JSON, scan artifacts, calibrated clearance likelihood) |
 | Portability | Can computation resume across a runtime boundary? | Restartable state snapshot + operational equivalence | `gat/state_snapshot.py`, `gat/adapters/openusd.py` | implemented (JSON and OpenUSD carriers) |
 | History | Can the evolution be independently reproduced? | Closed, hash-chained accepted/rejected event ledger | `gat/ledger.py` | implemented (schema v1 + exact replay) |
+| Computational integrity | Can an external proof system attest one exact accepted transition? | Proof-carrying state-transition manifest | `gat/proof_manifest.py` | implemented (backend-neutral binding; cryptographic verifier optional) |
 | Causality | What was assessed, selected, approved, or done without changing belief? | Typed state-bound causal events | `gat/causal.py` | implemented (closed records + lifecycles) |
 | Inference | What state explains the evidence? | Bayesian conditioning | `gat/gaussian/condition.py` | implemented (linearized observations) |
 | State | What do we currently believe? | Gaussian state μ, Σ | `gat/gaussian/` | implemented |
@@ -413,6 +414,56 @@ assert session.world.digest() == assessment.world_digest  # no hidden mutation
 Only a later acquired measurement conditions the belief. See
 [`docs/causal-events-v1.md`](docs/causal-events-v1.md) for typed records,
 lifecycle rules, and the authority/signature boundary.
+
+### Proof-carrying computation claims
+
+An accepted ledger transition can now be packaged as a
+`gat-computation-proof-manifest` v1. The manifest binds the exact prior and
+result worlds, closed operation, verification report, event and ledger head,
+proof-program and verifying-key digests, an explicit numerical contract, and
+the external proof bytes. Engineering-model and validation-profile digests
+travel beside the claim so computational integrity cannot silently masquerade
+as engineering validity.
+
+```python
+from hashlib import sha256
+from gat import (
+    NumericContract,
+    create_computation_proof_manifest,
+    verify_computation_proof_manifest,
+)
+
+numeric = NumericContract(
+    "clearance-micrometre-v1",
+    sha256(numeric_profile_bytes).hexdigest(),
+    "signed-fixed-point",
+    "nearest-ties-to-even",
+    "checked",
+)
+manifest = create_computation_proof_manifest(
+    session.ledger,
+    event_seq=len(session.ledger.events) - 1,
+    numeric_contract=numeric,
+    model_contract_digest=sha256(engineering_contract_bytes).hexdigest(),
+    validation_profile_digest=sha256(validation_profile_bytes).hexdigest(),
+    proof_system="sp1",
+    proof_type="groth16",
+    program_digest=sha256(guest_elf).hexdigest(),
+    verifying_key_digest=sha256(verifying_key).hexdigest(),
+    proof_artifact=proof_bytes,
+)
+
+# Binding alone is not proof verification. A host must supply the backend.
+report = verify_computation_proof_manifest(
+    manifest, session.ledger, proof_bytes, verifier=sp1_verifier
+)
+assert report.proof_verified
+```
+
+GAT does not include an SP1 runtime, fetch proof locators, infer privacy from a
+proof-type label, or authorize a building action because a proof verifies.
+See [`docs/proof-carrying-state-v1.md`](docs/proof-carrying-state-v1.md) for
+the statement, numerical and trust contracts.
 
 ### Portable computational-state snapshots
 
@@ -1182,7 +1233,7 @@ The Gaussian representation is therefore one component of a larger computational
 
 **Research / Experimental — v0 implemented**
 
-GAT is an exploratory open-source project. The v0 engine (see *GAT v0 — the implemented engine* above) implements the §17 milestone end to end: the state-propagation core, the geometric Gaussian layer, explicit temporal process dynamics, decision-focused active inference, calibrated scan evidence, a deterministic causal execution ledger, restartable computational state through JSON and OpenUSD, and self-asserting demonstrations backed by a full test suite.
+GAT is an exploratory open-source project. The v0 engine (see *GAT v0 — the implemented engine* above) implements the §17 milestone end to end: the state-propagation core, the geometric Gaussian layer, explicit temporal process dynamics, decision-focused active inference, calibrated scan evidence, a deterministic causal execution ledger, restartable computational state through JSON and OpenUSD, backend-neutral proof-carrying transition commitments, and self-asserting demonstrations backed by a full test suite.
 
 The architecture, mathematical assumptions, representations, and implementation are expected to evolve as they are tested against real BIM data and engineering workflows.
 
@@ -1198,6 +1249,10 @@ GAT's adapter boundary (§12) is designed to meet the surrounding toolchain rath
 * [OpenUSD](https://openusd.org/) — GAT's first optional scene-graph carrier
   for the restartable state contract and derived geometry. It is an
   interoperability layer, not a replacement for the canonical runtime.
+* [SP1](https://github.com/succinctlabs/sp1) — the first intended external
+  verifier backend for proof-carrying GAT transitions. The core currently
+  defines and verifies the portable binding manifest only; it does not bundle
+  a zkVM, proving service, blockchain, or implicit confidentiality claim.
 
 No claim is made that Gaussian representations are universally optimal for BIM.
 
