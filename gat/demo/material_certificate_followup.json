@@ -1,0 +1,29 @@
+{
+  "format": "gat-material-certificate-observation-v1",
+  "schema_version": 1,
+  "certificate_id": "MAT-CERT-B1-360-RETEST",
+  "issued_at": "2026-09-01T12:00:00Z",
+  "issuer": {
+    "organization_id": "LAB-STRUCTURAL-001",
+    "name": "Reference Structural Materials Laboratory"
+  },
+  "subject": {
+    "ifc_class": "IfcBeam",
+    "ifc_global_id": "GATBEAMELEMENT00000100"
+  },
+  "material": {
+    "batch_id": "HEAT-B1-2026-08",
+    "specimen_id": "COUPON-B1-18"
+  },
+  "observation": {
+    "property": "YieldStrengthMPa",
+    "reported_value": 360.0,
+    "standard_uncertainty_sigma": 2.0,
+    "unit": "MPa",
+    "method": "coupon-retest-material-certificate-v1"
+  },
+  "calibration": {
+    "calibration_id": "CAL-UTM-2026-08",
+    "calibration_digest": "bdc7e3e8a712c8553bbac9e905879c79ded13130ca12617fc493fb70e33fd5f6"
+  }
+}

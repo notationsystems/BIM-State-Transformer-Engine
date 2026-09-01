@@ -22,6 +22,22 @@ An accepted carrier must reconstruct the same:
 The receiving runtime calls GAT's ordinary snapshot decoder and invariant
 registry. A stage is not accepted merely because USD can parse it.
 
+## Carrier versus observation
+
+A verified GAT `State` branch is a representation of an already-formed
+computational belief. It is not a general rule that incoming USD attributes are
+true or are measurements. Non-GAT scene data, images, point clouds, Gaussian
+splats, and sensor values must remain quarantined artifacts until an adapter
+classifies their source, binds semantic identity, supplies a measurement model
+and uncertainty, and emits accepted evidence through the normal conditioning
+path. USD composition cannot bypass that boundary.
+
+Likewise, external geometry generators and engineering solvers are projections
+or operators over canonical state; they do not own or mutate `World` directly.
+Their results must re-enter through an explicit transformation and invariant
+check. This preserves the distinction between designed, observed, inferred,
+generated, and predicted representations of the asset.
+
 ## Stage topology
 
 ```text
@@ -156,6 +172,14 @@ the source carrier version and snapshot digest in hash-bound provenance.
 `GatSession.load_openusd` restores it so a later transformation extends the
 same chain. Direct `write_openusd` calls that omit a ledger create a deterministic
 one-event genesis at the exported world.
+
+The beam-specific conformance experiment is
+`python -m gat.demo.beam_openusd_portability`. It requires a separately launched
+runtime to authenticate a signed checkpoint containing the material evidence
+transition and beam assessment, reproduce the transported computation digest
+and verdict, apply a second certificate, and produce exactly the same world and
+ledger as uninterrupted execution. Carrier authentication remains distinct
+from certificate trust and engineering authorization.
 
 The implementation uses custom `gat:` properties and does not yet ship a
 generated OpenUSD typed or applied API schema plugin. This keeps the carrier

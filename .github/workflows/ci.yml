@@ -63,10 +63,13 @@ jobs:
         run: python -m pip install -e ".[openusd]"
 
       - name: Run native OpenUSD and signed-carrier tests
-        run: python -m unittest tests.test_openusd tests.test_headless -v
+        run: python -m unittest tests.test_openusd tests.test_headless tests.test_beam_openusd_portability -v
 
       - name: Run native OpenUSD portability demo (self-asserting)
         run: python -m gat.demo.openusd_portability ci-openusd-out
+
+      - name: Run signed beam-chain OpenUSD continuation (self-asserting)
+        run: python -m gat.demo.beam_openusd_portability ci-beam-openusd-out
 
   test-public-ifc:
     runs-on: ubuntu-latest
