@@ -18,6 +18,7 @@ from __future__ import annotations
 import numpy as np
 
 from gat.engine.binding import GaussianBinding
+from gat.errors import BindingError
 from gat.gaussian.linalg import symmetrize
 from gat.gaussian.state import GaussianState
 
@@ -73,7 +74,9 @@ def jacobian_rows(
         if binding.is_raw(var):
             H[k, binding.raw_index.row(var)] = 1.0
             predicted[k] = belief.mean(var)
-        else:
+        elif var in topo_row:
             H[k, :] = G[topo_row[var]]
             predicted[k] = derived_values[var]
+        else:
+            raise BindingError(f"variable {var} is neither raw nor derived")
     return H, predicted

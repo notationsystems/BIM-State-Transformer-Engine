@@ -223,6 +223,62 @@ class ScaledSum(Expr):
         return f"({body})"
 
 
+def expr_to_obj(expr: Expr) -> list:
+    """JSON-able encoding of an expression tree (see :func:`expr_from_obj`)."""
+    if isinstance(expr, Const):
+        return ["const", expr.value]
+    if isinstance(expr, VarRef):
+        v = expr.var
+        return ["var", v.entity.ifc_class, v.entity.global_id, v.quantity]
+    if isinstance(expr, Add):
+        return ["add", expr_to_obj(expr.left), expr_to_obj(expr.right)]
+    if isinstance(expr, Sub):
+        return ["sub", expr_to_obj(expr.left), expr_to_obj(expr.right)]
+    if isinstance(expr, Mul):
+        return ["mul", expr_to_obj(expr.left), expr_to_obj(expr.right)]
+    if isinstance(expr, Neg):
+        return ["neg", expr_to_obj(expr.operand)]
+    if isinstance(expr, ScaledSum):
+        return [
+            "ssum",
+            expr.const,
+            [[coef, expr_to_obj(term)] for coef, term in expr.terms],
+        ]
+    if isinstance(expr, Mean):
+        return ["mean", [expr_to_obj(term) for term in expr.terms]]
+    raise TypeError(f"cannot encode expression node {type(expr).__name__}")
+
+
+def expr_from_obj(obj: list) -> Expr:
+    """Decode :func:`expr_to_obj` output.  The transformation semantics of a
+    transferred state are carried as these trees, so a receiving runtime
+    *recomputes* Jacobians from definitions instead of trusting serialized
+    derivative values."""
+    from gat.ids import EntityId, VarId  # local import avoids a cycle at module load
+
+    tag = obj[0]
+    if tag == "const":
+        return Const(float(obj[1]))
+    if tag == "var":
+        return VarRef(VarId(EntityId(str(obj[1]), str(obj[2])), str(obj[3])))
+    if tag == "add":
+        return Add(expr_from_obj(obj[1]), expr_from_obj(obj[2]))
+    if tag == "sub":
+        return Sub(expr_from_obj(obj[1]), expr_from_obj(obj[2]))
+    if tag == "mul":
+        return Mul(expr_from_obj(obj[1]), expr_from_obj(obj[2]))
+    if tag == "neg":
+        return Neg(expr_from_obj(obj[1]))
+    if tag == "ssum":
+        return ScaledSum(
+            tuple((float(coef), expr_from_obj(term)) for coef, term in obj[2]),
+            const=float(obj[1]),
+        )
+    if tag == "mean":
+        return Mean(tuple(expr_from_obj(term) for term in obj[1]))
+    raise ValueError(f"unknown expression tag {tag!r}")
+
+
 @dataclass(frozen=True)
 class Mean(Expr):
     """Arithmetic mean of one or more sub-expressions."""

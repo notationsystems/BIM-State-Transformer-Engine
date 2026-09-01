@@ -101,9 +101,11 @@ def quantities_of(file: IfcFile, defs: list[RawInstance]) -> dict[str, tuple[flo
     return out
 
 
-def pset_values(file: IfcFile, defs: list[RawInstance], pset_name: str) -> dict[str, float]:
-    """Numeric single values of the named property set, if present."""
-    out: dict[str, float] = {}
+def pset_value_refs(
+    file: IfcFile, defs: list[RawInstance], pset_name: str
+) -> dict[str, tuple[float, int]]:
+    """``{property name: (value, property step id)}`` of the named pset."""
+    out: dict[str, tuple[float, int]] = {}
     for definition in defs:
         if definition.type_name != "IFCPROPERTYSET":
             continue
@@ -116,8 +118,13 @@ def pset_values(file: IfcFile, defs: list[RawInstance], pset_name: str) -> dict[
             pname = attr(prop, "Name")
             value = attr(prop, "NominalValue")
             if isinstance(pname, str) and value is not None:
-                out[pname] = numeric(value)
+                out[pname] = (numeric(value), prop.step_id)
     return out
+
+
+def pset_values(file: IfcFile, defs: list[RawInstance], pset_name: str) -> dict[str, float]:
+    """Numeric single values of the named property set, if present."""
+    return {k: v for k, (v, _) in pset_value_refs(file, defs, pset_name).items()}
 
 
 # -- placements ------------------------------------------------------------
@@ -138,8 +145,14 @@ def resolve_placement(file: IfcFile, placement_ref) -> Placement:
         raise LoweringError(f"expected placement reference, got {placement_ref!r}")
 
     chain: list[RawInstance] = []
+    seen: set[int] = set()
     cursor = placement_ref
     while cursor is not None:
+        if cursor.step_id in seen:
+            raise LoweringError(
+                f"#{cursor.step_id}: cyclic IfcLocalPlacement chain"
+            )
+        seen.add(cursor.step_id)
         inst = file.deref(cursor)
         if inst.type_name != "IFCLOCALPLACEMENT":
             raise LoweringError(f"#{inst.step_id}: unsupported placement {inst.type_name}")
@@ -198,6 +211,13 @@ def resolve_placement(file: IfcFile, placement_ref) -> Placement:
 
 
 def unit_is_metres(file: IfcFile) -> bool:
+    # A conversion-based length unit (the standard imperial pattern wraps an
+    # SI METRE base) means quantities are NOT in metres, whatever the SI
+    # record says — reject before consulting IfcSIUnit.
+    for unit in file.by_type("IFCCONVERSIONBASEDUNIT"):
+        unit_type = unit.args[1] if len(unit.args) > 1 else None
+        if isinstance(unit_type, EnumVal) and unit_type.name == "LENGTHUNIT":
+            return False
     for unit in file.by_type("IFCSIUNIT"):
         unit_type = attr(unit, "UnitType")
         if isinstance(unit_type, EnumVal) and unit_type.name == "LENGTHUNIT":

@@ -37,6 +37,7 @@ from gat.adapters.ifc.reader import (
     global_id,
     name_of,
     properties_of,
+    pset_value_refs,
     pset_values,
     quantities_of,
     refs,
@@ -125,6 +126,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
 
     entities: dict[EntityId, Entity] = {}
     quantity_refs: dict[VarId, int] = {}
+    used_source_refs: set[int] = set()
     storeys: list[EntityId] = []
     walls: list[EntityId] = []
     spaces: list[EntityId] = []
@@ -142,7 +144,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         # A previously exported file carries posterior sigmas; they take
         # precedence so uncertainty round-trips through IFC.
         overrides.update(pset_values(file, defs, "GAT_Posterior"))
-        material = pset_values(file, defs, "GAT_Material")
+        material = pset_value_refs(file, defs, "GAT_Material")
 
         slots: dict[str, QtySlot] = {}
         for qname in REQUIRED_QUANTITIES.get(canonical, ()):
@@ -152,6 +154,13 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
                     f"required quantity {qname!r}"
                 )
             value, qref = quantities[qname]
+            if qref in used_source_refs:
+                raise LoweringError(
+                    f"quantity #{qref} is shared by multiple products "
+                    f"(second: {eid.global_id}); one quantity record per "
+                    f"state variable is required in v0"
+                )
+            used_source_refs.add(qref)
             var = VarId(eid, qname)
             slots[qname] = QtySlot(
                 var=var,
@@ -164,9 +173,9 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
             quantity_refs[var] = qref
 
         if canonical == "IfcWall" and "UnitCost" in material:
-            mean = material["UnitCost"]
+            mean, cost_ref = material["UnitCost"]
             if "UnitCostSigma" in material and "UnitCostSigma" not in overrides:
-                overrides["UnitCostSigma"] = material["UnitCostSigma"]
+                overrides["UnitCostSigma"] = material["UnitCostSigma"][0]
             sigma = _sigma_for(canonical, "UnitCost", mean, overrides)
             var = VarId(eid, "UnitCost")
             slots["UnitCost"] = QtySlot(
@@ -175,6 +184,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
                 unit=Unit.CURRENCY_PER_M3,
                 prior_mu=mean,
                 prior_sigma=float(sigma),
+                source_ref=cost_ref,  # the writer patches the pset property
             )
             priced_walls.add(eid)
 
@@ -342,28 +352,51 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         )
         add_derived(space, "Volume", Unit.M3, Mul(VarRef(floor), VarRef(clear_height)))
 
-    if walls:
+    # Rollup membership comes from the SAME relationship edges the QTY-01
+    # invariant re-sums over (walls CONTAINed in the storey, spaces
+    # AGGREGATED into it), so the DAG and the graph can never disagree
+    # about who counts.
+    contained_walls = sorted(
+        rel.target
+        for rel in rels
+        if rel.kind is RelKind.CONTAINS
+        and rel.source == storey
+        and rel.target in set(walls)
+    )
+    aggregated_spaces = sorted(
+        rel.target
+        for rel in rels
+        if rel.kind is RelKind.AGGREGATES
+        and rel.source == storey
+        and rel.target in set(spaces)
+    )
+    if contained_walls:
         add_derived(
             storey,
             "TotalWallNetVolume",
             Unit.M3,
-            ScaledSum(tuple((1.0, VarRef(VarId(w, "NetVolume"))) for w in sorted(walls))),
+            ScaledSum(
+                tuple((1.0, VarRef(VarId(w, "NetVolume"))) for w in contained_walls)
+            ),
         )
-    if priced_walls:
+    contained_priced = [w for w in contained_walls if w in priced_walls]
+    if contained_priced:
         add_derived(
             storey,
             "TotalWallCost",
             Unit.CURRENCY,
             ScaledSum(
-                tuple((1.0, VarRef(VarId(w, "Cost"))) for w in sorted(priced_walls))
+                tuple((1.0, VarRef(VarId(w, "Cost"))) for w in contained_priced)
             ),
         )
-    if spaces:
+    if aggregated_spaces:
         add_derived(
             storey,
             "TotalFloorArea",
             Unit.M2,
-            ScaledSum(tuple((1.0, VarRef(VarId(s, "FloorArea"))) for s in sorted(spaces))),
+            ScaledSum(
+                tuple((1.0, VarRef(VarId(s, "FloorArea"))) for s in aggregated_spaces)
+            ),
         )
 
     # -- constraints -------------------------------------------------------

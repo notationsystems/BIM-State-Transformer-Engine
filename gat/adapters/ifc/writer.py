@@ -77,7 +77,26 @@ def export_ifc(file: IfcFile, world: World, path: str) -> tuple[int, int]:
     """
     instances = dict(file.instances)
 
-    # 1. Patch quantity values with current means.
+    # 0. Strip any GAT_Posterior psets from a previous export, so repeated
+    #    export/reload cycles replace rather than accumulate them.
+    stale: set[int] = set()
+    for inst in file.by_type("IFCPROPERTYSET"):
+        if len(inst.args) > 2 and inst.args[2] == "GAT_Posterior":
+            stale.add(inst.step_id)
+            props = inst.args[4] if len(inst.args) > 4 else ()
+            if isinstance(props, tuple):
+                stale.update(p.step_id for p in props if isinstance(p, Ref))
+    if stale:
+        for inst in file.by_type("IFCRELDEFINESBYPROPERTIES"):
+            definition = inst.args[5] if len(inst.args) > 5 else None
+            if isinstance(definition, Ref) and definition.step_id in stale:
+                stale.add(inst.step_id)
+        for step_id in stale:
+            instances.pop(step_id, None)
+
+    # 1. Patch source-backed values with current means: IfcQuantity* records
+    #    carry the value at position 3; pset properties (e.g. UnitCost in
+    #    GAT_Material) carry a Typed value at position 2.
     quantity_to_var = {}
     for entity in world.module.entities.values():
         for slot in entity.slots.values():
@@ -89,12 +108,16 @@ def export_ifc(file: IfcFile, world: World, path: str) -> tuple[int, int]:
         if inst is None:
             continue
         args = list(inst.args)
-        args[3] = world.full.mean(var)  # IfcQuantity* value position
+        mean = world.full.mean(var)
+        if inst.type_name == "IFCPROPERTYSINGLEVALUE":
+            args[2] = Typed("IFCREAL", (mean,))
+        else:
+            args[3] = mean
         instances[step_id] = RawInstance(step_id, inst.type_name, tuple(args))
         n_patched += 1
 
     # 2. Append GAT_Posterior psets carrying raw-parameter sigmas.
-    next_id = file.max_step_id() + 1
+    next_id = max(file.max_step_id(), max(instances, default=0)) + 1
     appended: list[RawInstance] = []
     owner_history = None
     for inst in file.by_type("IFCOWNERHISTORY"):
@@ -112,13 +135,16 @@ def export_ifc(file: IfcFile, world: World, path: str) -> tuple[int, int]:
             continue
         prop_refs = []
         for slot in raw_slots:
+            # Floor at the binding's minimum prior sigma so a file carrying
+            # the posterior of an exact observation still re-binds.
+            sigma = max(world.belief.std(slot.var), 1e-6)
             prop = RawInstance(
                 next_id,
                 "IFCPROPERTYSINGLEVALUE",
                 (
                     f"{slot.var.quantity}Sigma",
                     "posterior standard deviation",
-                    Typed("IFCREAL", (world.belief.std(slot.var),)),
+                    Typed("IFCREAL", (sigma,)),
                     None,
                 ),
             )
@@ -157,12 +183,12 @@ def export_ifc(file: IfcFile, world: World, path: str) -> tuple[int, int]:
     for inst in appended:
         instances[inst.step_id] = inst
 
-    # 3. Canonical serialization.
+    # 3. Canonical serialization.  Every parsed header entry re-emits in
+    #    its original order — nothing the parser accepted is dropped.
     lines = ["ISO-10303-21;", "HEADER;"]
-    for key in ("FILE_DESCRIPTION", "FILE_NAME", "FILE_SCHEMA"):
-        if key in file.header:
-            args = ",".join(_serialize_value(v) for v in file.header[key])
-            lines.append(f"{key}({args});")
+    for key, header_args in file.header.items():
+        args = ",".join(_serialize_value(v) for v in header_args)
+        lines.append(f"{key}({args});")
     lines.append("ENDSEC;")
     lines.append("DATA;")
     for step_id in sorted(instances):

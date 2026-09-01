@@ -88,6 +88,20 @@ Key semantics, fixed by design review:
 * **Differentiable layout** — cost/daylight/energy objectives with exact DAG gradients, chance-constraint penalties sharing the compliance margins, closed-form Gaussian ray transmittance with forward-mode dual-number gradient witnesses; results commit through ordinary verified interventions.
 * **Splat interoperability** — the scene exports to the standard 3D Gaussian Splatting PLY layout (positions, quaternions, log-scales, SH DC color by semantic class), loadable in stock 3DGS viewers.
 
+### OpenUSD state-space interchange
+
+`python -m gat.demo.usd` runs the interchange "killer test": not *USD export*, but
+
+> **Computational World → OpenUSD → Computational World**
+
+Runtime A applies a transformation, serializes its **entire computational state** to a USD stage — real `Xform`/`Cube` prims any USD tool can open, with identity, semantics, topology, the joint Gaussian belief (floats via shortest round-tripping repr → bitwise reconstruction), typed constraints, the *defining expressions* of every derived quantity, and the execution trace carried in a `gat` custom-data namespace — and **dies** (a real subprocess exit). Runtime B reconstructs the world from the stage, passes a formal invariant suite (`I_identity ∧ I_geometry ∧ I_topology ∧ I_semantics ∧ I_gaussian ∧ I_constraints ∧ I_provenance ∧ I_configuration`), recompiles the dependency DAG and Jacobians *from the transferred definitions*, and continues the computation. Success criterion, demonstrated and tested:
+
+```
+S2_transferred ≃ S2_continuous     (posterior mean and covariance BITWISE equal)
+```
+
+All eight transfer levels — geometry, BIM semantics, topology, Gaussian state, computational state, transformation semantics, provenance, and operational state-space equivalence — pass in the shipped demo and test suite (`tests/test_usd_interchange.py`).
+
 ### Analysis APIs
 
 ```python

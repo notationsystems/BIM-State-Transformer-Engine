@@ -100,9 +100,17 @@ def attention_weights(scene: GeometryScene, config: AttentionConfig) -> np.ndarr
     logits = content + geo + affinity + structure
     np.fill_diagonal(logits, -np.inf)  # no self-attention; the residual term keeps self
 
-    logits -= logits.max(axis=1, keepdims=True)
-    weights = np.exp(logits)
-    weights /= weights.sum(axis=1, keepdims=True)
+    # NaN-safe softmax: a token with no finite logit (e.g. a single-primitive
+    # scene) gets an all-zero row — it listens to nobody and, in the
+    # diffusion update below, simply keeps its payload.
+    finite = np.isfinite(logits)
+    has_any = finite.any(axis=1, keepdims=True)
+    row_max = np.where(
+        has_any, np.max(np.where(finite, logits, -np.inf), axis=1, keepdims=True), 0.0
+    )
+    weights = np.where(finite, np.exp(logits - row_max), 0.0)
+    sums = weights.sum(axis=1, keepdims=True)
+    weights = np.divide(weights, sums, out=np.zeros_like(weights), where=sums > 0)
     assert weights.shape == (n, n)
     return weights
 
@@ -118,9 +126,12 @@ def propagate(
     payload_cols = list(PAYLOAD_CHANNELS)
 
     alpha = attention_weights(scene, config)
+    row_mass = alpha.sum(axis=1, keepdims=True)  # 1, or 0 for isolated tokens
     for _ in range(config.rounds):
         payload = features[:, payload_cols]
-        delta = alpha @ payload - payload
+        # Literal diffusion form sum_j alpha_ij (v_j - v_i): an all-zero
+        # attention row yields delta 0, so isolated tokens are fixed points.
+        delta = alpha @ payload - row_mass * payload
         features[:, payload_cols] = payload + config.lam * delta
 
     out = GaussianCloud(
@@ -158,9 +169,12 @@ def laplacian_baseline(
     adjacency += ADJACENCY_FLOOR
     weights = adjacency / adjacency.sum(axis=1, keepdims=True)
 
+    row_mass = weights.sum(axis=1, keepdims=True)
     for _ in range(config.rounds):
         payload = features[:, payload_cols]
-        features[:, payload_cols] = payload + config.lam * (weights @ payload - payload)
+        features[:, payload_cols] = payload + config.lam * (
+            weights @ payload - row_mass * payload
+        )
 
     out = GaussianCloud(
         cloud.means.copy(),
@@ -175,11 +189,18 @@ def laplacian_baseline(
 
 
 def element_payload_means(scene: GeometryScene, cloud: GaussianCloud) -> dict[str, np.ndarray]:
-    """Weight-averaged payload per element — the element-level readout."""
+    """Weight-averaged payload per element — the element-level readout.
+
+    Keys are element names; a duplicate name gets a ``#<row>`` suffix so no
+    element's payload can silently shadow another's.
+    """
     out: dict[str, np.ndarray] = {}
     payload_cols = list(PAYLOAD_CHANNELS)
     for element in scene.elements:
         prims = cloud.select(cloud.element_index == element.row)
         w = prims.weights / prims.weights.sum()
-        out[element.name] = w @ prims.features[:, payload_cols]
+        key = element.name
+        if key in out:
+            key = f"{key}#{element.row}"
+        out[key] = w @ prims.features[:, payload_cols]
     return out

@@ -3,9 +3,13 @@
 Two differentiability mechanisms, both real and both witnessed in tests:
 
 * **State-space terms** (cost, daylight ratio, energy proxy, chance
-  constraints) are functions of derived quantities, so their exact
-  gradients w.r.t. raw parameters come from the engine's total Jacobian
-  rows — the same chain-rule bridge the propagation layer uses.
+  constraints) are functions of derived quantities, so their gradients
+  w.r.t. raw parameters come from the engine's total Jacobian rows — the
+  same chain-rule bridge the propagation layer uses.  Gradients are exact
+  in the *means*; the chance-constraint sigma is held fixed within one
+  evaluation (it is recomputed at every accepted step), so the
+  ``z_alpha * d(sigma)/dx`` term is deliberately omitted — a documented
+  quasi-Newton approximation, second-order in the mm-scale sigmas.
 * **Field terms** (ray transmittance through the Gaussian solid) have
   closed-form values; their gradients are obtained by forward-mode dual
   numbers (:mod:`gat.geometry.dual`) — exact to machine precision, no
@@ -64,7 +68,12 @@ def ray_optical_depth(
 ) -> float:
     """Optical depth of a finite ray through a weighted Gaussian set."""
     direction = np.asarray(direction, dtype=np.float64)
-    direction = direction / np.linalg.norm(direction)
+    norm = float(np.linalg.norm(direction))
+    if norm < 1e-12:
+        raise ValueError("ray direction must be nonzero")
+    if length < 0:
+        raise ValueError("ray length must be non-negative")
+    direction = direction / norm
     origin = np.asarray(origin, dtype=np.float64)
 
     inv = np.linalg.inv(covs)                              # (K, 3, 3)
@@ -150,7 +159,8 @@ class ObjectiveTerm:
 @dataclass
 class LayoutObjective:
     """C(x) = w_cost * cost + w_day * (daylight - target)^2 + w_energy * energy
-    + chance-constraint penalties, with exact raw-space gradients."""
+    + chance-constraint penalties, with analytic raw-space gradients (exact
+    in the means; constraint sigmas held fixed per evaluation)."""
 
     cost_var: VarId
     daylight_area_var: VarId       # aperture area (e.g. opening.Area)

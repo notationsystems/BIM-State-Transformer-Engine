@@ -162,6 +162,11 @@ class ScaleParameter(Transformation):
     name = "scale_parameter"
 
     def __init__(self, var: VarId, factor: float):
+        if factor == 0.0:
+            raise ValueError(
+                "factor must be nonzero: scaling to zero would collapse the "
+                "variable's variance and break the full-rank belief guarantee"
+            )
         self.var = var
         self.factor = float(factor)
 
