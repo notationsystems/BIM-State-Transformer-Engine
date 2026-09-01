@@ -1,4 +1,4 @@
-# BIM State Transformer — GAT Computational Core 
+# BIM State Transformer Engine — For OpenUSD
 
 **BIM State Transformer** is a portable, decision-focused computational state
 runtime for Building Information Modeling (BIM). Its **GAT (Gaussian
