@@ -22,7 +22,9 @@ classifiers = [
 dependencies = ["numpy>=1.24"]
 
 [project.scripts]
+gat = "gat.cli:main"
 gat-headless = "gat.headless:main"
+gat-ifc-audit = "gat.cli:ifc_audit_main"
 
 [project.optional-dependencies]
 openusd = ["usd-core>=26.8,<27", "cryptography>=40"]
