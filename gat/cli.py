@@ -1,15 +1,19 @@
-"""The ``gat`` command line — the engine without writing Python.
+"""Stable command-line surface over the headless GAT core.
 
-    gat check   model.ifc [--proposed duct.json]   probabilistic clash report
-    gat verify  model.ifc                          invariants + compliance
+    gat audit   model.ifc                        IFC compatibility inventory (fail-closed)
+    gat check   model.ifc [--proposed duct.json] probabilistic clash report
+    gat verify  model.ifc                        invariants + compliance
     gat inspect model.ifc [--var Wall-Party.Length] state, sensitivities
-    gat splats  model.ifc out/                     splat PLYs (+ --variations N)
-    gat sample  model.ifc [--n 500]                realization / violation rates
+    gat splats  model.ifc out/                   splat PLYs (+ --variations N)
+    gat sample  model.ifc [--n 500]              realization / violation rates
 
-Every command is deterministic, reads the model fresh, and never mutates
-it.  ``--json`` switches any command to machine-readable output.  Exit
-codes: 0 clean, 1 findings (a clash at/above the threshold, a failed
-verification), 2 usage or input errors.
+Every command is deterministic and never mutates the model.  ``--json``
+(where offered) switches to machine-readable output.
+
+Exit codes are per-command contracts: ``audit`` returns 0 when the model is
+pipeline-ready, 2 when unsupported content blocks ingestion, and 3 on I/O
+errors; the state commands return 0 clean, 1 findings (a likely clash, a
+failed verification), and 2 on usage or input errors.
 
 A proposed-element spec (for ``check --proposed``) is a small JSON file:
 
@@ -22,7 +26,9 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from pathlib import Path
 import sys
+from typing import Sequence
 
 from gat.engine.sampling import sample_report
 from gat.engine.sensitivity import sensitivities_of, variance_attribution
@@ -34,7 +40,31 @@ from gat.geometry.splat_io import export_splat_ply
 from gat.geometry.stateio import derive_scene
 from gat.geometry.variations import export_variations, variation_spread
 from gat.ids import VarId
+from gat.ifc_audit import audit_ifc_file
 from gat.session import GatSession
+
+
+def _write_report(rendered: str, output: str | None) -> None:
+    if output is None:
+        sys.stdout.write(rendered)
+    else:
+        Path(output).write_text(rendered, encoding="utf-8")
+
+
+def _run_audit(args: argparse.Namespace) -> int:
+    try:
+        report = audit_ifc_file(args.model)
+        rendered = report.render() + "\n" if args.text else report.to_json(pretty=not args.compact)
+        _write_report(rendered, args.output)
+    except OSError as exc:
+        sys.stderr.write(f"gat audit: {exc}\n")
+        return 3
+    if report.pipeline_ready:
+        return 0
+    return 2
+
+
+# -- state commands ---------------------------------------------------------
 
 
 def _load(path: str) -> GatSession:
@@ -76,7 +106,7 @@ def _clash_item_dict(item) -> dict:
     }
 
 
-def cmd_check(args: argparse.Namespace) -> int:
+def _run_check(args: argparse.Namespace) -> int:
     session = _load(args.model)
     scene = derive_scene(session.world)
     report = detect(scene, max_clearance=args.max_clearance)
@@ -121,7 +151,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 1 if worst >= args.fail_above else 0
 
 
-def cmd_verify(args: argparse.Namespace) -> int:
+def _run_verify(args: argparse.Namespace) -> int:
     session = _load(args.model)
     invariants = session.verify()
     compliance = check_compliance(session.world)
@@ -148,7 +178,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 0 if passed else 1
 
 
-def cmd_inspect(args: argparse.Namespace) -> int:
+def _run_inspect(args: argparse.Namespace) -> int:
     session = _load(args.model)
     world = session.world
     if args.var is None:
@@ -204,7 +234,7 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_splats(args: argparse.Namespace) -> int:
+def _run_splats(args: argparse.Namespace) -> int:
     import os
 
     session = _load(args.model)
@@ -231,7 +261,7 @@ def cmd_splats(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_sample(args: argparse.Namespace) -> int:
+def _run_sample(args: argparse.Namespace) -> int:
     session = _load(args.model)
     report = sample_report(session.world, n=args.n, seed=args.seed)
     data = {
@@ -250,57 +280,67 @@ def cmd_sample(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gat",
-        description="GAT — uncertainty-aware BIM state engine",
+        description="Decision-focused, uncertainty-aware BIM state tools",
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    commands = parser.add_subparsers(dest="command", required=True)
 
-    p = sub.add_parser("check", help="probabilistic clash report")
+    audit = commands.add_parser(
+        "audit",
+        help="inventory IFC compatibility without mutating or partially importing it",
+    )
+    audit.add_argument("model", help="IFC STEP file to inspect")
+    audit.add_argument("-o", "--output", help="write the report to this path")
+    audit.add_argument("--compact", action="store_true", help="emit compact canonical JSON")
+    audit.add_argument("--text", action="store_true", help="emit a concise human-readable summary")
+    audit.set_defaults(handler=_run_audit)
+
+    p = commands.add_parser("check", help="probabilistic clash report")
     p.add_argument("model")
     p.add_argument("--proposed", help="JSON spec of a proposed element")
     p.add_argument("--max-clearance", type=float, default=0.5)
     p.add_argument("--fail-above", type=float, default=0.5,
                    help="exit 1 when any P(clash) reaches this (default 0.5)")
     p.add_argument("--json", action="store_true")
-    p.set_defaults(func=cmd_check)
+    p.set_defaults(handler=_run_check)
 
-    p = sub.add_parser("verify", help="invariants + compliance under uncertainty")
+    p = commands.add_parser("verify", help="invariants + compliance under uncertainty")
     p.add_argument("model")
     p.add_argument("--json", action="store_true")
-    p.set_defaults(func=cmd_verify)
+    p.set_defaults(handler=_run_verify)
 
-    p = sub.add_parser("inspect", help="state summary or one variable in depth")
+    p = commands.add_parser("inspect", help="state summary or one variable in depth")
     p.add_argument("model")
     p.add_argument("--var", help="Entity-Name.Quantity, e.g. Wall-Party.Length")
     p.add_argument("--top", type=int, default=6)
     p.add_argument("--json", action="store_true")
-    p.set_defaults(func=cmd_inspect)
+    p.set_defaults(handler=_run_inspect)
 
-    p = sub.add_parser("splats", help="3DGS splat export (+ sampled variations)")
+    p = commands.add_parser("splats", help="3DGS splat export (+ sampled variations)")
     p.add_argument("model")
     p.add_argument("out_dir")
     p.add_argument("--variations", type=int, default=0)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--spacing", type=float, default=0.75)
-    p.set_defaults(func=cmd_splats)
+    p.set_defaults(handler=_run_splats)
 
-    p = sub.add_parser("sample", help="invariant checking over belief realizations")
+    p = commands.add_parser("sample", help="invariant checking over belief realizations")
     p.add_argument("model")
     p.add_argument("--n", type=int, default=500)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--json", action="store_true")
-    p.set_defaults(func=cmd_sample)
+    p.set_defaults(handler=_run_sample)
 
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return 2 if exc.code not in (0, None) else 0
     try:
-        return args.func(args)
+        return int(args.handler(args))
     except FileNotFoundError as exc:
         print(f"gat: {exc}", file=sys.stderr)
         return 2
@@ -309,5 +349,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
 
+def ifc_audit_main(argv: Sequence[str] | None = None) -> int:
+    return main(["audit", *(sys.argv[1:] if argv is None else argv)])
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

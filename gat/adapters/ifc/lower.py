@@ -42,9 +42,9 @@ from gat.adapters.ifc.reader import (
     quantities_of,
     refs,
     resolve_placement,
-    unit_is_metres,
 )
 from gat.adapters.ifc.schema import PRODUCT_CLASSES
+from gat.adapters.ifc.units import LengthUnitContext, length_unit_context
 from gat.errors import LoweringError
 from gat.ids import EntityId, VarId
 from gat.ir.core import (
@@ -98,10 +98,14 @@ def _sigma_for(
     quantity: str,
     mean: float,
     overrides: dict[str, float],
+    length_units: LengthUnitContext,
 ) -> float:
     override = overrides.get(f"{quantity}Sigma")
     if override is not None:
-        return float(override)
+        value = float(override)
+        if QUANTITY_UNITS.get(quantity) is Unit.M:
+            return length_units.to_metres(value)
+        return value
     if quantity == "UnitCost":
         return max(abs(mean) * UNIT_COST_REL_SIGMA, 1e-6)
     default = DEFAULT_SIGMAS.get((canonical_class, quantity))
@@ -111,8 +115,7 @@ def _sigma_for(
 
 
 def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
-    if not unit_is_metres(file):
-        raise LoweringError("length unit must be SI metres (no prefix)")
+    length_units = length_unit_context(file)
 
     # -- products ----------------------------------------------------------
     products: dict[int, tuple[EntityId, RawInstance, str]] = {}
@@ -153,7 +156,8 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
                     f"{canonical} {eid.global_id} ({name_of(inst)!r}) lacks "
                     f"required quantity {qname!r}"
                 )
-            value, qref = quantities[qname]
+            source_value, qref = quantities[qname]
+            value = length_units.to_metres(source_value)
             if qref in used_source_refs:
                 raise LoweringError(
                     f"quantity #{qref} is shared by multiple products "
@@ -167,7 +171,9 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
                 role=Role.RAW,
                 unit=QUANTITY_UNITS.get(qname, Unit.M),
                 prior_mu=value,
-                prior_sigma=_sigma_for(canonical, qname, value, overrides),
+                prior_sigma=_sigma_for(
+                    canonical, qname, value, overrides, length_units
+                ),
                 source_ref=qref,
             )
             quantity_refs[var] = qref
@@ -176,7 +182,9 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
             mean, cost_ref = material["UnitCost"]
             if "UnitCostSigma" in material and "UnitCostSigma" not in overrides:
                 overrides["UnitCostSigma"] = material["UnitCostSigma"][0]
-            sigma = _sigma_for(canonical, "UnitCost", mean, overrides)
+            sigma = _sigma_for(
+                canonical, "UnitCost", mean, overrides, length_units
+            )
             var = VarId(eid, "UnitCost")
             slots["UnitCost"] = QtySlot(
                 var=var,
@@ -191,7 +199,11 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         placement = None
         layout_placement = attr(inst, "ObjectPlacement") if canonical != "IfcProject" else None
         if isinstance(layout_placement, Ref):
-            placement = resolve_placement(file, layout_placement)
+            placement = resolve_placement(
+                file,
+                layout_placement,
+                length_scale_to_metres=length_units.scale_to_metres,
+            )
 
         entities[eid] = Entity(
             id=eid,
@@ -434,6 +446,8 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
             "source": source,
             "schema": file.schema,
             "adapter": "gat.adapters.ifc v0",
+            "ifc_length_scale_to_metres": repr(length_units.scale_to_metres),
+            "ifc_length_unit": length_units.label,
         },
     )
     return module

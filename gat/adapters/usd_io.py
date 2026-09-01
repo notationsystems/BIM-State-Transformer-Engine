@@ -1,4 +1,9 @@
-"""OpenUSD-backed state-space interchange.
+"""Legacy zero-dependency USDA state-space interchange proof.
+
+This closed, hand-emitted subset is retained as a NumPy-only fallback and an
+executable portability proof. New carrier capabilities belong in
+``gat.adapters.openusd``; JSON snapshots and that native OpenUSD adapter are
+the canonical restart paths.
 
 Not "USD export": the goal is that a *computational world* crosses the
 boundary —

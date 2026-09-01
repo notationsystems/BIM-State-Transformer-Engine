@@ -20,8 +20,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install runtime dependency
-        run: python -m pip install numpy
+      - name: Install GAT
+        run: python -m pip install -e .
 
       - name: Run test suite
         run: python -m unittest discover -v
@@ -38,10 +38,60 @@ jobs:
       - name: Run the construction workflow demo (self-asserting)
         run: python -m gat.demo.workflow
 
+      - name: Run the active-inference demo (self-asserting)
+        run: python -m gat.demo.active_inference
+
+      - name: Run the snapshot-portability demo (self-asserting)
+        run: python -m gat.demo.portability ci-portability-out
+
+      - name: Run the temporal predict-update demo (self-asserting)
+        run: python -m gat.demo.temporal_process
+
+      - name: Run the ledger replay demo (self-asserting)
+        run: python -m gat.demo.ledger_replay ci-out/execution-ledger.json
+
+  test-openusd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install GAT with native OpenUSD and signature support
+        run: python -m pip install -e ".[openusd]"
+
+      - name: Run native OpenUSD and signed-carrier tests
+        run: python -m unittest tests.test_openusd tests.test_headless -v
+
+      - name: Run native OpenUSD portability demo (self-asserting)
+        run: python -m gat.demo.openusd_portability ci-openusd-out
+
+  test-public-ifc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install GAT
+        run: python -m pip install -e .
+
+      - name: Fetch commit-pinned public IFC corpus
+        run: python validation/fetch_ifc_corpus.py ci-ifc-corpus
+
+      - name: Verify measured public-model compatibility baselines
+        env:
+          GAT_IFC_VALIDATION_ROOT: ci-ifc-corpus
+        run: python -m unittest tests.test_public_ifc_corpus -v
+
   test-extras:
-    # The optional [openusd] stack: without this job the signed-carrier and
-    # pxr tests only ever skip.  Also exercises the CLI and the demos the
-    # base job does not cover.
+    # Everything the other jobs do not cover: the FULL suite with the
+    # optional stack installed (zero skips) on the second Python version,
+    # and the gat command-line surface end to end.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,21 +106,9 @@ jobs:
       - name: Run the full test suite (no optional skips)
         run: python -m unittest discover -v
 
-      - name: Run the ledger replay demo (self-asserting)
-        run: python -m gat.demo.ledger_replay ci-out-ledger.json
-
-      - name: Run the portability demos (self-asserting)
-        run: |
-          python -m gat.demo.portability ci-out
-          python -m gat.demo.openusd_portability ci-out
-
-      - name: Run the planning demos (self-asserting)
-        run: |
-          python -m gat.demo.active_inference ci-out
-          python -m gat.demo.temporal_process ci-out
-
       - name: Exercise the gat CLI
         run: |
+          gat audit gat/demo/model.ifc --text
           gat verify gat/demo/model.ifc
           gat check gat/demo/model.ifc
           gat inspect gat/demo/model.ifc --var "Level 1.TotalWallCost"

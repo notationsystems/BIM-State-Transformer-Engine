@@ -226,7 +226,11 @@ class GatSession:
 
     @classmethod
     def load_usd(cls, path: str) -> "GatSession":
-        """Reconstruct a session from a GAT USD stage (state-space interchange)."""
+        """Load the legacy NumPy-only USDA interchange fallback.
+
+        Prefer :meth:`load_snapshot` or :meth:`load_openusd` for canonical
+        restart and signed-carrier workflows.
+        """
         from gat.adapters.usd_io import load_usd
 
         world, imported_trace = load_usd(path)
@@ -307,7 +311,11 @@ class GatSession:
     # -- export ------------------------------------------------------------
 
     def export_usd(self, path: str) -> int:
-        """Serialize the full computational state as a USD stage."""
+        """Write the legacy NumPy-only USDA interchange fallback.
+
+        Prefer :meth:`export_snapshot` or :meth:`export_openusd` for canonical
+        restart and signed-carrier workflows.
+        """
         from gat.adapters.usd_io import export_usd
 
         events = [

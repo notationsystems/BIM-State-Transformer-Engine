@@ -10,7 +10,7 @@ from __future__ import annotations
 
 #: type name -> {attribute name: argument position}
 SUPPORTED_ENTITIES: dict[str, dict[str, int]] = {
-    "IFCPROJECT": {"GlobalId": 0, "Name": 2},
+    "IFCPROJECT": {"GlobalId": 0, "Name": 2, "UnitsInContext": 8},
     "IFCBUILDING": {"GlobalId": 0, "Name": 2, "ObjectPlacement": 5},
     "IFCBUILDINGSTOREY": {"GlobalId": 0, "Name": 2, "ObjectPlacement": 5},
     "IFCWALL": {"GlobalId": 0, "Name": 2, "ObjectPlacement": 5},
@@ -56,6 +56,7 @@ SUPPORTED_ENTITIES: dict[str, dict[str, int]] = {
     "IFCCARTESIANPOINT": {"Coordinates": 0},
     "IFCDIRECTION": {"DirectionRatios": 0},
     "IFCSIUNIT": {"UnitType": 1, "Prefix": 2, "Name": 3},
+    "IFCUNITASSIGNMENT": {"Units": 0},
 }
 
 #: The building-element classes the adapter lowers to IR entities,

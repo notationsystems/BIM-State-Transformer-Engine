@@ -219,15 +219,22 @@ class TestLoweringErrors(unittest.TestCase):
         self.assertIn("exactly one storey", str(ctx.exception))
         self.assertIn("2", str(ctx.exception))
 
-    def test_millimetre_length_unit_rejected(self):
+    def test_millimetre_length_unit_is_normalized(self):
         text = edited_demo(
             "#2=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);",
             "#2=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);",
             self,
         )
-        with self.assertRaises(LoweringError) as ctx:
-            GatSession.from_text(text)
-        self.assertIn("metres", str(ctx.exception))
+        session = GatSession.from_text(text)
+        self.assertEqual(session.world.module.meta["ifc_length_unit"], "MILLI METRE")
+        self.assertEqual(
+            session.world.module.meta["ifc_length_scale_to_metres"], "0.001"
+        )
+        self.assertAlmostEqual(
+            session.world.belief.mean(session.var("Level 1", "ClearHeight")),
+            0.003,
+            delta=1e-15,
+        )
 
 
 if __name__ == "__main__":
