@@ -222,6 +222,23 @@ the canonical production carrier and will not receive new carrier features.
 canonical restart paths; native OpenUSD is the scene-graph and signed-ledger
 bridge for Blender, Omniverse, and other USD hosts.
 
+### The `gat` command line
+
+The engine without writing Python — for BIM coordinators, GIS pipelines, and artists:
+
+```bash
+gat audit   model.ifc --text                   # fail-closed IFC compatibility inventory
+gat verify  model.ifc                          # invariants + compliance under uncertainty
+gat check   model.ifc --proposed duct.json     # probabilistic clash report; exit 1 on a likely clash
+gat inspect model.ifc --var "Level 1.TotalWallCost"   # mean ± sigma, sensitivities, variance attribution
+gat splats  model.ifc out/ --variations 25     # 3DGS splat PLYs: nominal + 25 sampled as-builts
+gat sample  model.ifc --n 500                  # invariant checking over belief realizations
+```
+
+Every command is deterministic and read-only; `--json` switches to machine output. `gat audit` (also available as `gat-ifc-audit`) inventories a real-world IFC file's compatibility **before** any ingestion is attempted — unsupported entities are reported explicitly, never silently skipped. `gat splats --variations` is the **belief-driven variation generator**: each PLY is a sampled realization of `N(mu, Sigma)` — a physically consistent plausible as-built whose imperfections are correlated exactly as the model says (walls sharing a storey height move together), with a manifest recording each sample's dimensions and verification status. Grounded procedural variation for art and previz pipelines, instead of noise functions.
+
+Sampling also closes a scientific loop: `gat.engine.sampling.empirical_pair_clearance` Monte-Carlo-estimates clash probabilities from realizations and the test suite asserts they agree with the analytic delta-method scores within Monte-Carlo error — the uncertainty machinery is *measured* to be calibrated, not assumed.
+
 ### Analysis APIs
 
 ```python

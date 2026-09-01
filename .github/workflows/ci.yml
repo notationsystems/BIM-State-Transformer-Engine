@@ -87,3 +87,30 @@ jobs:
         env:
           GAT_IFC_VALIDATION_ROOT: ci-ifc-corpus
         run: python -m unittest tests.test_public_ifc_corpus -v
+
+  test-extras:
+    # Everything the other jobs do not cover: the FULL suite with the
+    # optional stack installed (zero skips) on the second Python version,
+    # and the gat command-line surface end to end.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install with the openusd extra
+        run: python -m pip install ".[openusd]"
+
+      - name: Run the full test suite (no optional skips)
+        run: python -m unittest discover -v
+
+      - name: Exercise the gat CLI
+        run: |
+          gat audit gat/demo/model.ifc --text
+          gat verify gat/demo/model.ifc
+          gat check gat/demo/model.ifc
+          gat inspect gat/demo/model.ifc --var "Level 1.TotalWallCost"
+          gat splats gat/demo/model.ifc ci-out-splats --variations 2
+          gat sample gat/demo/model.ifc --n 100
