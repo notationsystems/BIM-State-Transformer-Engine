@@ -1,0 +1,68 @@
+{
+  "format": "gat-incremental-scale-reference-v1",
+  "measured_on": "2026-09-01",
+  "status": "environment-specific-reference-not-regression-threshold",
+  "runtime": {
+    "python": "3.12.13",
+    "numpy": "2.3.5",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "hardware": "Codex local host; CPU model not recorded"
+  },
+  "synthetic_model": {
+    "raw_variables_per_storey": 1,
+    "derived_variables_per_storey": 2,
+    "changed_raw_variables": 1,
+    "affected_derived_variables": 2,
+    "covariance_representation": "dense-float64"
+  },
+  "one_second_cliff_definition": "first measured size at or above 1.0 seconds",
+  "measurements": [
+    {
+      "storeys": 512,
+      "full_variables": 1536,
+      "complete_pushforward_seconds": 0.081887,
+      "incremental_pushforward_seconds": 0.038035,
+      "verification_seconds": 0.032740,
+      "covariance_left_rows_recomputed": 2,
+      "full_covariance_rows_recomputed": 2
+    },
+    {
+      "storeys": 1024,
+      "full_variables": 3072,
+      "complete_pushforward_seconds": 0.412455,
+      "incremental_pushforward_seconds": 0.175237,
+      "verification_seconds": 0.146959,
+      "covariance_left_rows_recomputed": 2,
+      "full_covariance_rows_recomputed": 2
+    },
+    {
+      "storeys": 1536,
+      "full_variables": 4608,
+      "complete_pushforward_seconds": 1.063992,
+      "incremental_pushforward_seconds": 0.398081,
+      "verification_seconds": 0.341020,
+      "covariance_left_rows_recomputed": 2,
+      "full_covariance_rows_recomputed": 2
+    },
+    {
+      "storeys": 2048,
+      "full_variables": 6144,
+      "complete_pushforward_seconds": 2.171965,
+      "incremental_pushforward_seconds": 0.814310,
+      "verification_seconds": 0.681620,
+      "covariance_left_rows_recomputed": 2,
+      "full_covariance_rows_recomputed": 2
+    }
+  ],
+  "observed_cliffs": {
+    "complete_pushforward_storeys": 1536,
+    "verified_incremental_pipeline_storeys": 2048
+  },
+  "analytical_resident_array_limits": {
+    "one_gib_storeys": 2896,
+    "four_gib_storeys": 5792,
+    "included_arrays": "raw belief mean/covariance, full mean/covariance, cached full Jacobian, cached J Sigma_raw product",
+    "excludes": "temporary matrix products, Python objects, IR, ledger, and host overhead"
+  },
+  "interpretation": "Incremental recomputation delays the measured one-second local-update cliff, but dense covariance storage and global verification remain quadratic/cubic scale constraints. Re-run the probe on deployment hardware before choosing a sparse or factor representation."
+}

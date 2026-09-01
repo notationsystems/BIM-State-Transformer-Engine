@@ -158,3 +158,54 @@ class DependencyGraph:
             G[r] = row
             env[var] = slot.expr.eval(env)
         return G
+
+    def incremental_values_and_jacobian(
+        self,
+        raw_order: tuple[VarId, ...],
+        raw_env: dict[VarId, float],
+        previous_values: dict[VarId, float],
+        previous_jacobian: np.ndarray,
+        affected: tuple[VarId, ...],
+    ) -> tuple[dict[VarId, float], np.ndarray]:
+        """Re-evaluate only affected derived nodes and their Jacobian rows.
+
+        Unaffected values and rows are copied from the preceding verified
+        world. ``affected`` must be forward-closed under this dependency DAG;
+        callers obtain that property from :meth:`affected_set`.
+        """
+        expected_shape = (len(self._topo), len(raw_order))
+        if previous_jacobian.shape != expected_shape:
+            raise ValueError(
+                "previous derived Jacobian shape differs from the dependency graph"
+            )
+        if set(previous_values) != set(self._topo):
+            raise ValueError("previous derived values differ from the dependency graph")
+        affected_set = set(affected)
+        unknown = affected_set - set(self._topo)
+        if unknown:
+            raise ValueError(f"affected set contains non-derived variables: {unknown}")
+
+        col = {var: index for index, var in enumerate(raw_order)}
+        topo_row = {var: index for index, var in enumerate(self._topo)}
+        values = dict(previous_values)
+        jacobian = np.asarray(previous_jacobian, dtype=np.float64).copy()
+        env: dict[VarId, float] = dict(raw_env)
+        env.update(values)
+
+        for row_index, var in enumerate(self._topo):
+            if var not in affected_set:
+                continue
+            slot = self._derived_slots[var]
+            assert slot.expr is not None
+            partials = slot.expr.grad(env)
+            row = np.zeros(len(raw_order), dtype=np.float64)
+            for parent, partial in partials.items():
+                if parent in topo_row:
+                    row += partial * jacobian[topo_row[parent]]
+                else:
+                    row[col[parent]] += partial
+            value = slot.expr.eval(env)
+            jacobian[row_index] = row
+            values[var] = value
+            env[var] = value
+        return values, jacobian

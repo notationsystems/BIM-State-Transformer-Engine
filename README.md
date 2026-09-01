@@ -100,6 +100,7 @@ python -m gat.demo.openusd_portability  # do the same through a composed USD sta
 python -m gat.demo.beam_openusd_portability  # signed beam verdict + exact continuation
 python -m gat.demo.ledger_replay execution-ledger.json  # replay accepted + rejected history
 python -m gat.demo.temporal_process  # explicit process prediction -> evidence update -> replay
+python -m gat.demo.incremental_scale --sizes 16 32 64 128 256  # measure dense-state scale
 python -m gat.demo.workflow          # opening acceptance + non-mutating RFI preview
 python -m gat.demo.beam_assurance out/beam  # complete evidence-to-verification chain
 gat-headless request.json -o response.json  # read-only workflow boundary
@@ -190,7 +191,7 @@ Four pillars, four different questions — none of them redundant:
 
 Key semantics, fixed by design review:
 
-* The **raw belief is the only canonical Gaussian**; every derived quantity is an exact-mean, first-order-covariance pushforward through analytic Jacobians (`Σ_full = [I;G] Σ_raw [I;G]ᵀ`). Derived state is recomputed, never mutated — raw/derived inconsistency is impossible by construction and machine-checked anyway (invariant GAUSS-03).
+* The **raw belief is the only canonical Gaussian**; every derived quantity is an exact-mean, first-order-covariance pushforward through analytic Jacobians (`Σ_full = [I;G] Σ_raw [I;G]ᵀ`). Compilation computes the complete derived state; later commits re-evaluate only dependency-invalidated values/Jacobian rows and affected dense-covariance rows. Transformations never mutate derived entries directly, and invariant GAUSS-03 checks every definition before commit. See [`docs/incremental-propagation-v1.md`](docs/incremental-propagation-v1.md) for the equivalence contract and measured dense-state cliff.
 * **Interventions ≠ observations.** `SetParameter` is a do-intervention (severs correlations into the overridden variable); `ObserveQuantity` is Gaussian conditioning (sharpens belief *through* correlations). Both are first-class, inspectable, composable operators.
 * All solves run in **full-rank raw space** (batch Joseph form, Cholesky solves, no explicit inverses, no eigendecompositions in the execution path); the rank-deficient full joint is a read-only view.
 * **Verification is part of execution**: every transformation ends in the full invariant registry; strict failures roll back.

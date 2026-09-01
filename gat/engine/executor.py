@@ -24,7 +24,11 @@ import hashlib
 import numpy as np
 
 from gat.engine.binding import GaussianBinding, bind
-from gat.engine.propagate import push_forward
+from gat.engine.propagate import (
+    PropagationStats,
+    push_forward_incremental,
+    push_forward_with_jacobian,
+)
 from gat.engine.transform import (
     CompositeTransformation,
     ObservationTransformation,
@@ -48,16 +52,86 @@ class World:
     binding: GaussianBinding
     belief: GaussianState
     full: GaussianState
+    jacobian: np.ndarray | None = field(default=None, repr=False, compare=False)
+    covariance_left: np.ndarray | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
+
+    def __post_init__(self) -> None:
+        expected = (self.binding.n_full, self.binding.n_raw)
+        for field_name, source in (
+            ("jacobian", self.jacobian),
+            ("covariance_left", self.covariance_left),
+        ):
+            if source is None:
+                continue
+            value = np.asarray(source, dtype=np.float64)
+            if value.shape != expected or not np.isfinite(value).all():
+                raise ValueError(
+                    f"world {field_name} must be finite with shape {expected}"
+                )
+            value = value.copy()
+            value.setflags(write=False)
+            object.__setattr__(self, field_name, value)
 
     @classmethod
     def compile(cls, module: Module) -> "World":
         binding, belief = bind(module)
-        full = push_forward(binding, belief)
-        return cls(module, RelationshipGraph.of(module), binding, belief, full)
+        full, jacobian, covariance_left, _ = push_forward_with_jacobian(
+            binding,
+            belief,
+        )
+        return cls(
+            module,
+            RelationshipGraph.of(module),
+            binding,
+            belief,
+            full,
+            jacobian,
+            covariance_left,
+        )
 
     def with_belief(self, belief: GaussianState) -> "World":
-        full = push_forward(self.binding, belief)
-        return World(self.module, self.graph, self.binding, belief, full)
+        full, jacobian, covariance_left, _ = push_forward_with_jacobian(
+            self.binding,
+            belief,
+        )
+        return World(
+            self.module,
+            self.graph,
+            self.binding,
+            belief,
+            full,
+            jacobian,
+            covariance_left,
+        )
+
+    def with_belief_incremental(
+        self,
+        belief: GaussianState,
+    ) -> tuple["World", PropagationStats]:
+        full, jacobian, covariance_left, stats = push_forward_incremental(
+            self.binding,
+            self.belief,
+            belief,
+            self.full,
+            self.jacobian,
+            self.covariance_left,
+        )
+        return (
+            World(
+                self.module,
+                self.graph,
+                self.binding,
+                belief,
+                full,
+                jacobian,
+                covariance_left,
+            ),
+            stats,
+        )
 
     def digest(self) -> str:
         h = hashlib.sha256()
@@ -86,6 +160,7 @@ class ExecutionResult:
     targets: tuple[VarId, ...]
     affected: tuple[VarId, ...] = field(default=())
     deltas: tuple[tuple[VarId, float], ...] = field(default=())
+    propagation: PropagationStats | None = None
 
     def describe(self) -> str:
         status = "committed" if self.committed else "REJECTED"
@@ -112,6 +187,7 @@ class ExecutionPreview:
     targets: tuple[VarId, ...]
     affected: tuple[VarId, ...] = field(default=())
     deltas: tuple[tuple[VarId, float], ...] = field(default=())
+    propagation: PropagationStats | None = None
 
     @property
     def admissible(self) -> bool:
@@ -122,7 +198,7 @@ def preview(world: World, t: Transformation) -> ExecutionPreview:
     """Evaluate a transformation without committing or hiding a failed state."""
     _assert_observation_provenance(world, t)
     new_belief = t.apply(world.binding, world.belief)
-    candidate = world.with_belief(new_belief)
+    candidate, propagation = world.with_belief_incremental(new_belief)
 
     targets = t.target_vars()
     raw_targets = tuple(v for v in targets if world.binding.is_raw(v))
@@ -142,6 +218,7 @@ def preview(world: World, t: Transformation) -> ExecutionPreview:
         targets=targets,
         affected=affected,
         deltas=deltas,
+        propagation=propagation,
     )
 
 
@@ -160,6 +237,7 @@ def execute(world: World, t: Transformation, strict: bool = True) -> ExecutionRe
             candidate.targets,
             candidate.affected,
             candidate.deltas,
+            candidate.propagation,
         )
 
     return ExecutionResult(
@@ -170,6 +248,7 @@ def execute(world: World, t: Transformation, strict: bool = True) -> ExecutionRe
         candidate.targets,
         candidate.affected,
         candidate.deltas,
+        candidate.propagation,
     )
 
 
