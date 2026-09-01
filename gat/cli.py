@@ -6,14 +6,17 @@
     gat inspect model.ifc [--var Wall-Party.Length] state, sensitivities
     gat splats  model.ifc out/                   splat PLYs (+ --variations N)
     gat sample  model.ifc [--n 500]              realization / violation rates
+    gat report  response.json [--html]           render a gat-headless decision
 
 Every command is deterministic and never mutates the model.  ``--json``
 (where offered) switches to machine-readable output.
 
 Exit codes are per-command contracts: ``audit`` returns 0 when the model is
 pipeline-ready, 2 when unsupported content blocks ingestion, and 3 on I/O
-errors; the state commands return 0 clean, 1 findings (a likely clash, a
-failed verification), and 2 on usage or input errors.
+errors; ``report`` returns 0 for a rendered decision, 1 when the response
+is a rendered headless error, 2 for invalid input, and 3 on I/O errors;
+the state commands return 0 clean, 1 findings (a likely clash, a failed
+verification), and 2 on usage or input errors.
 
 A proposed-element spec (for ``check --proposed``) is a small JSON file:
 
@@ -41,6 +44,7 @@ from gat.geometry.stateio import derive_scene
 from gat.geometry.variations import export_variations, variation_spread
 from gat.ids import VarId
 from gat.ifc_audit import audit_ifc_file
+from gat.report import decode_response, render_html, render_text
 from gat.session import GatSession
 
 
@@ -62,6 +66,22 @@ def _run_audit(args: argparse.Namespace) -> int:
     if report.pipeline_ready:
         return 0
     return 2
+
+
+def _run_report(args: argparse.Namespace) -> int:
+    try:
+        if args.response == "-":
+            value = json.load(sys.stdin)
+        else:
+            with open(args.response, "r", encoding="utf-8") as handle:
+                value = json.load(handle)
+        report = decode_response(value)
+        rendered = render_html(report) if args.html else render_text(report) + "\n"
+        _write_report(rendered, args.output)
+    except OSError as exc:
+        sys.stderr.write(f"gat report: {exc}\n")
+        return 3
+    return 1 if report.operation == "error" else 0
 
 
 # -- state commands ---------------------------------------------------------
@@ -329,6 +349,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--json", action="store_true")
     p.set_defaults(handler=_run_sample)
+
+    p = commands.add_parser(
+        "report",
+        help="render a gat-headless response for humans (terminal or HTML)",
+    )
+    p.add_argument("response", help="headless response JSON path, or - for stdin")
+    p.add_argument("-o", "--output", help="write the rendering to this path")
+    p.add_argument(
+        "--html",
+        action="store_true",
+        help="emit a self-contained, script-free HTML report",
+    )
+    p.set_defaults(handler=_run_report)
 
     return parser
 
