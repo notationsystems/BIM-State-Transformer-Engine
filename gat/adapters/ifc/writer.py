@@ -23,8 +23,9 @@ from gat.adapters.ifc.parser import (
     Ref,
     Typed,
 )
+from gat.adapters.ifc.units import length_unit_context
 from gat.engine.executor import World
-from gat.ir.core import Role
+from gat.ir.core import Role, Unit
 
 
 def format_real(value: float) -> str:
@@ -76,6 +77,7 @@ def export_ifc(file: IfcFile, world: World, path: str) -> tuple[int, int]:
     new instances appended.
     """
     instances = dict(file.instances)
+    length_units = length_unit_context(file)
 
     # 0. Strip any GAT_Posterior psets from a previous export, so repeated
     #    export/reload cycles replace rather than accumulate them.
@@ -97,22 +99,25 @@ def export_ifc(file: IfcFile, world: World, path: str) -> tuple[int, int]:
     # 1. Patch source-backed values with current means: IfcQuantity* records
     #    carry the value at position 3; pset properties (e.g. UnitCost in
     #    GAT_Material) carry a Typed value at position 2.
-    quantity_to_var = {}
+    quantity_to_slot = {}
     for entity in world.module.entities.values():
         for slot in entity.slots.values():
             if slot.source_ref is not None:
-                quantity_to_var[slot.source_ref] = slot.var
+                quantity_to_slot[slot.source_ref] = slot
     n_patched = 0
-    for step_id, var in sorted(quantity_to_var.items()):
+    for step_id, slot in sorted(quantity_to_slot.items()):
         inst = instances.get(step_id)
         if inst is None:
             continue
         args = list(inst.args)
-        mean = world.full.mean(var)
+        mean = world.full.mean(slot.var)
+        source_mean = (
+            length_units.from_metres(mean) if slot.unit is Unit.M else mean
+        )
         if inst.type_name == "IFCPROPERTYSINGLEVALUE":
-            args[2] = Typed("IFCREAL", (mean,))
+            args[2] = Typed("IFCREAL", (source_mean,))
         else:
-            args[3] = mean
+            args[3] = source_mean
         instances[step_id] = RawInstance(step_id, inst.type_name, tuple(args))
         n_patched += 1
 
@@ -138,13 +143,16 @@ def export_ifc(file: IfcFile, world: World, path: str) -> tuple[int, int]:
             # Floor at the binding's minimum prior sigma so a file carrying
             # the posterior of an exact observation still re-binds.
             sigma = max(world.belief.std(slot.var), 1e-6)
+            source_sigma = (
+                length_units.from_metres(sigma) if slot.unit is Unit.M else sigma
+            )
             prop = RawInstance(
                 next_id,
                 "IFCPROPERTYSINGLEVALUE",
                 (
                     f"{slot.var.quantity}Sigma",
                     "posterior standard deviation",
-                    Typed("IFCREAL", (sigma,)),
+                    Typed("IFCREAL", (source_sigma,)),
                     None,
                 ),
             )

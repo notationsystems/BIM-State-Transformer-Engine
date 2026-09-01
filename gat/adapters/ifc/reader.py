@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from gat.adapters.ifc.parser import EnumVal, IfcFile, RawInstance, Ref, Typed
+from gat.adapters.ifc.parser import IfcFile, RawInstance, Ref, Typed
 from gat.adapters.ifc.schema import SUPPORTED_ENTITIES
 from gat.errors import LoweringError
 from gat.ir.core import Placement
@@ -130,7 +130,12 @@ def pset_values(file: IfcFile, defs: list[RawInstance], pset_name: str) -> dict[
 # -- placements ------------------------------------------------------------
 
 
-def resolve_placement(file: IfcFile, placement_ref) -> Placement:
+def resolve_placement(
+    file: IfcFile,
+    placement_ref,
+    *,
+    length_scale_to_metres: float = 1.0,
+) -> Placement:
     """Resolve an IfcLocalPlacement chain into an absolute Placement.
 
     v0 supports translation plus rotation about +Z (RefDirection in the XY
@@ -178,7 +183,9 @@ def resolve_placement(file: IfcFile, placement_ref) -> Placement:
             values = [numeric(v) for v in coords]
             while len(values) < 3:
                 values.append(0.0)
-            lx, ly, lz = values[:3]
+            lx, ly, lz = (
+                value * length_scale_to_metres for value in values[:3]
+            )
         local_angle = 0.0
         ref_dir = attr(axis2, "RefDirection")
         if isinstance(ref_dir, Ref):
@@ -211,17 +218,10 @@ def resolve_placement(file: IfcFile, placement_ref) -> Placement:
 
 
 def unit_is_metres(file: IfcFile) -> bool:
-    # A conversion-based length unit (the standard imperial pattern wraps an
-    # SI METRE base) means quantities are NOT in metres, whatever the SI
-    # record says — reject before consulting IfcSIUnit.
-    for unit in file.by_type("IFCCONVERSIONBASEDUNIT"):
-        unit_type = unit.args[1] if len(unit.args) > 1 else None
-        if isinstance(unit_type, EnumVal) and unit_type.name == "LENGTHUNIT":
-            return False
-    for unit in file.by_type("IFCSIUNIT"):
-        unit_type = attr(unit, "UnitType")
-        if isinstance(unit_type, EnumVal) and unit_type.name == "LENGTHUNIT":
-            prefix = attr(unit, "Prefix")
-            name = attr(unit, "Name")
-            return prefix is None and isinstance(name, EnumVal) and name.name == "METRE"
-    return True  # no explicit length unit: assume SI metres
+    """Compatibility predicate for callers that require metre-native input."""
+    from gat.adapters.ifc.units import length_unit_context
+
+    try:
+        return length_unit_context(file).scale_to_metres == 1.0
+    except LoweringError:
+        return False

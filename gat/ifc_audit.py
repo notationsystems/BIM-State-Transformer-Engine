@@ -34,6 +34,7 @@ from gat.adapters.ifc.reader import (
     resolve_placement,
 )
 from gat.adapters.ifc.schema import PRODUCT_CLASSES, SUPPORTED_ENTITIES
+from gat.adapters.ifc.units import SI_PREFIX_SCALE, assigned_unit_ids
 from gat.engine.executor import World
 from gat.engine.verify import run_invariants
 from gat.errors import GatError
@@ -90,6 +91,7 @@ class LengthUnitAudit:
             "name": self.name,
             "prefix": self.prefix,
             "scale_to_metres": self.scale_to_metres,
+            "normalization_required": self.scale_to_metres not in (None, 1.0),
             "accepted_by_current_adapter": self.accepted_by_current_adapter,
         }
 
@@ -255,29 +257,12 @@ class IfcAuditReport:
         return "\n".join(lines)
 
 
-_PREFIX_SCALE = {
-    "EXA": 1e18,
-    "PETA": 1e15,
-    "TERA": 1e12,
-    "GIGA": 1e9,
-    "MEGA": 1e6,
-    "KILO": 1e3,
-    "HECTO": 1e2,
-    "DECA": 1e1,
-    "DECI": 1e-1,
-    "CENTI": 1e-2,
-    "MILLI": 1e-3,
-    "MICRO": 1e-6,
-    "NANO": 1e-9,
-    "PICO": 1e-12,
-    "FEMTO": 1e-15,
-    "ATTO": 1e-18,
-}
-
-
 def _length_units(file: IfcFile) -> tuple[LengthUnitAudit, ...]:
     units: list[LengthUnitAudit] = []
+    project_units = assigned_unit_ids(file)
     for inst in file.by_type("IFCCONVERSIONBASEDUNIT"):
+        if project_units is not None and inst.step_id not in project_units:
+            continue
         unit_type = inst.args[1] if len(inst.args) > 1 else None
         if isinstance(unit_type, EnumVal) and unit_type.name == "LENGTHUNIT":
             name = inst.args[2] if len(inst.args) > 2 and isinstance(inst.args[2], str) else ""
@@ -285,6 +270,8 @@ def _length_units(file: IfcFile) -> tuple[LengthUnitAudit, ...]:
                 LengthUnitAudit(inst.step_id, "CONVERSION_BASED", name, None, None, False)
             )
     for inst in file.by_type("IFCSIUNIT"):
+        if project_units is not None and inst.step_id not in project_units:
+            continue
         try:
             unit_type = attr(inst, "UnitType")
             if not isinstance(unit_type, EnumVal) or unit_type.name != "LENGTHUNIT":
@@ -296,7 +283,7 @@ def _length_units(file: IfcFile) -> tuple[LengthUnitAudit, ...]:
             continue
         prefix = prefix_value.name if isinstance(prefix_value, EnumVal) else None
         name = name_value.name if isinstance(name_value, EnumVal) else ""
-        scale = (1.0 if prefix is None else _PREFIX_SCALE.get(prefix)) if name == "METRE" else None
+        scale = (1.0 if prefix is None else SI_PREFIX_SCALE.get(prefix)) if name == "METRE" else None
         units.append(
             LengthUnitAudit(
                 inst.step_id,
@@ -304,9 +291,11 @@ def _length_units(file: IfcFile) -> tuple[LengthUnitAudit, ...]:
                 name,
                 prefix,
                 scale,
-                name == "METRE" and prefix is None,
+                name == "METRE" and scale is not None,
             )
         )
+    if not units and project_units is not None:
+        raise GatError("project unit assignment has no supported length unit")
     if not units:
         units.append(LengthUnitAudit(None, "ASSUMED_SI", "METRE", None, 1.0, True))
     return tuple(sorted(units, key=lambda unit: (-1 if unit.step_id is None else unit.step_id)))
@@ -431,9 +420,13 @@ def _audit_parsed(
     size_bytes: int,
 ) -> IfcAuditReport:
     type_counts = tuple(sorted(Counter(inst.type_name for inst in file.instances.values()).items()))
-    units = _length_units(file)
     model_issues: list[AuditIssue] = []
-    if any(not unit.accepted_by_current_adapter for unit in units):
+    try:
+        units = _length_units(file)
+    except GatError as exc:
+        units = ()
+        model_issues.append(AuditIssue("UNSUPPORTED_LENGTH_UNIT", "ERROR", str(exc)))
+    if units and any(not unit.accepted_by_current_adapter for unit in units):
         scalable = all(
             unit.scale_to_metres is not None and math.isfinite(unit.scale_to_metres)
             for unit in units

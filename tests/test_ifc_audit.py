@@ -37,17 +37,18 @@ class IfcAuditTests(unittest.TestCase):
         self.assertEqual(first.to_json(), second.to_json())
         self.assertEqual(first.world_digest, second.world_digest)
 
-    def test_prefixed_units_do_not_hide_downstream_entity_inventory(self) -> None:
+    def test_prefixed_units_are_normalized_without_hiding_inventory(self) -> None:
         millimetres = self.demo_text.replace(
             "IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)",
             "IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.)",
         )
         report = audit_ifc_text(millimetres)
-        self.assertFalse(report.pipeline_ready)
-        self.assertEqual(report.lowering.status, AuditStatus.BLOCKED)
-        self.assertEqual(dict(report.issue_counts)["LENGTH_UNIT_NORMALIZATION_REQUIRED"], 1)
+        self.assertTrue(report.pipeline_ready)
+        self.assertEqual(report.lowering.status, AuditStatus.PASS)
+        self.assertNotIn("LENGTH_UNIT_NORMALIZATION_REQUIRED", dict(report.issue_counts))
         self.assertEqual(len(report.entities), 10)
         self.assertTrue(report.length_units[0].scale_to_metres == 0.001)
+        self.assertTrue(report.length_units[0].accepted_by_current_adapter)
 
     def test_missing_quantity_is_classified_by_geometry_availability(self) -> None:
         missing = self.demo_text.replace(
@@ -79,6 +80,23 @@ class IfcAuditTests(unittest.TestCase):
         self.assertEqual(report.parse.status, AuditStatus.BLOCKED)
         self.assertEqual(dict(report.issue_counts), {"PARSE_FAILED": 1})
         self.assertEqual(report.lowering.status, AuditStatus.NOT_RUN)
+
+    def test_malformed_project_unit_context_is_a_structured_finding(self) -> None:
+        project = (
+            "#1=IFCPROJECT('GATPRJ0000000000000001',$,'GAT Demo Project',"
+            "$,$,$,$,$,#997);"
+        )
+        text = self.demo_text.replace(
+            "#1=IFCPROJECT('GATPRJ0000000000000001',$,'GAT Demo Project',$,$,$,$,$,$);",
+            project,
+        ).replace(
+            "ENDSEC;\nEND-ISO",
+            "#997=IFCUNITASSIGNMENT((42));\nENDSEC;\nEND-ISO",
+        )
+        report = audit_ifc_text(text)
+        self.assertEqual(dict(report.issue_counts)["UNSUPPORTED_LENGTH_UNIT"], 1)
+        self.assertEqual(report.length_units, ())
+        self.assertEqual(report.lowering.status, AuditStatus.BLOCKED)
 
     def test_cli_writes_machine_readable_report_and_meaningful_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
