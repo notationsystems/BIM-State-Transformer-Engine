@@ -13,8 +13,8 @@ from gat.engineering import (
     BeamBendingEvaluator,
     beam_assessment_record,
     explain_beam_decision_change,
+    read_material_certificate,
 )
-from gat.evidence import CalibratedObservation, EvidenceKind
 from gat.ledger import read_ledger, replay_ledger
 from gat.session import GatSession
 from gat.state_snapshot import computational_equivalence
@@ -68,22 +68,14 @@ def run_beam_assurance(
         provenance={"phase": "prior-design-belief"},
     )
 
-    source = certificate_path.read_bytes()
-    evidence = CalibratedObservation.from_source_bytes(
-        "MAT-CERT-B1-325",
-        fy,
-        EvidenceKind.MEASURED,
-        325.0,
-        2.0,
-        "MPa",
-        source,
-        "coupon-test-material-certificate-v1",
-        hashlib.sha256(b"coupon-test-calibration-v1").hexdigest(),
+    certificate_evidence = read_material_certificate(certificate_path).to_evidence(
+        session.world
     )
+    evidence = certificate_evidence.observation
     before_observation = session.world
     transition = session.run(
         evidence.transformation(session.world),
-        provenance=evidence.provenance(),
+        provenance=certificate_evidence.provenance(),
     )
     transition_event = session.ledger.events[-1]
     revised = evaluator.evaluate(

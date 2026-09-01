@@ -1,7 +1,8 @@
 # Real-IFC validation v1
 
-Status: implemented audit boundary, measured baseline, and SI length-unit
-normalization; geometry-quantity derivation is the next adapter phase.
+Status: implemented audit boundary, measured baseline, SI length-unit
+normalization, bounded beam geometry derivation, and strict material-certificate
+ingestion. The next phase is independent design-code validation.
 
 ## Why this exists
 
@@ -45,6 +46,8 @@ It includes:
 - active project length-unit kind, prefix, scale to metres, and whether
   normalization is required;
 - placement incompatibilities without stopping the rest of the inventory;
+- a non-authorizing beam-geometry summary with complete, partial, and blocked
+  counts plus an ordered result digest;
 - separate lowering, compilation, and verification stage results; and
 - an explicit assurance statement that the audit cannot authorize decisions.
 
@@ -76,7 +79,7 @@ can be reproduced with `--include-large`.
 | Shipped two-office model | 10 | 10 `READY`; full pipeline passes. |
 | buildingSMART wall/opening/window Reference View | 3 | 2 need geometry derivation; 1 lacks a fallback. |
 | buildingSMART PCERT Building Architecture | 7 | 4 `READY`; 2 need geometry derivation; 1 lacks a fallback. |
-| buildingSMART Medical–Dental Clinic Structural | 37 in current architectural scope; 738 beam candidates | 33 need geometry derivation; 4 storeys lack clear height; multi-storey lowering remains blocked. |
+| buildingSMART Medical–Dental Clinic Structural | 37 in architectural scope; 738 beam candidates | 738 lengths; 277 swept-solid sections complete; 461 surface-model beams explicitly length-only; multi-storey lowering blocked. |
 | Schependomlaan as-planned IFC2x3 | 1,086 | 1,022 need geometry derivation; 63 also have unsupported placements; 1 lacks a fallback. |
 
 The two small IFC4 fixtures and Schependomlaan declare millimetres; the clinic
@@ -105,10 +108,26 @@ contract requires one storey, and the storeys do not provide `ClearHeight`.
 That fail-closed result is now a CI baseline rather than an anecdotal manual
 run.
 
-This is the first empirical adapter result: the dominant next task is not a
-new decision subsystem. With source-unit normalization complete, it is
-geometry-derived beam quantities and certificate ingestion with explicit
-provenance, followed by multi-storey ownership and full 3D placement support.
+The v1 provider derives `Length` from each beam's axis polyline. For the 277
+`IfcExtrudedAreaSolid` bodies, it samples the arbitrary closed composite profile
+(line and trimmed-circle segments), computes centroidal polygon properties,
+and emits `CrossSectionArea`, `SectionModulusMajorM3`, and
+`SectionModulusMinorM3`. Fine/coarse sampling disagreement supplies a bounded
+numerical-discretization error; every result binds the source IFC digest, STEP
+representation ids, unit scale, method version, and sampling policy. The 461
+`IfcFaceBasedSurfaceModel` bodies are not approximated from names or bounding
+boxes and therefore remain `LENGTH_ONLY`. The audit summary explicitly states
+that these values do not authorize structural decisions.
+
+Material evidence now enters through a strict versioned JSON certificate
+contract. It preserves certificate, issuer, beam, batch, specimen, property,
+unit, method, calibration, and source-byte identities and binds the observation
+to the exact canonical `VarId`. Unknown or duplicate fields, invalid numerical
+values, unsupported units/properties, and subject mismatches fail closed. The
+contract also states that issuer trust, signatures, revocation, and decision
+authorization are not yet verified. The reference beam experiment uses this
+reader, but its shipped certificate is a fixture—not real authenticated field
+evidence.
 
 ## Reproducing the corpus
 
@@ -130,16 +149,19 @@ silently download external data.
 
 1. **Completed:** resolve the active project SI length unit; prove equivalent
    metre-normalized state, placement, covariance, and source-unit round trips.
-2. **Next:** add a beam geometry-quantity provider behind the existing
-   lowering boundary, initially for the swept/extruded and mapped profiles in
-   the clinic model.
-3. Ingest material certificates as typed observations, preserving issuer,
+2. **Completed (bounded v1):** derive axis length for all 738 clinic beams and
+   section properties for the 277 swept/extruded arbitrary profiles; report the
+   remaining 461 surface models as explicit partial results.
+3. **Completed (schema v1):** ingest material certificates as typed
+   observations, preserving issuer,
    specimen/batch identity, calibration, units, and source digest.
-4. Attach provenance to every derived quantity: source representation ids,
-   algorithm version, unit scale, and uncertainty policy.
-5. Add storey-local ownership and support general rigid 3D placement
+4. **Completed:** attach provenance to every derived quantity: source
+   representation ids, algorithm version, unit scale, and uncertainty policy.
+5. **Next:** validate one versioned beam design-code calculation against an
+   independent oracle and bind its validation profile to the verdict.
+6. Then add storey-local ownership and support general rigid 3D placement
    composition; test both the clinic boundary and the 63 measured
    Schependomlaan failures.
-6. Only then admit a real-model structural decision scope into beam assurance.
+7. Only then admit a real-model structural decision scope into beam assurance.
 
 No tolerance mode should bypass these steps by silently dropping entities.

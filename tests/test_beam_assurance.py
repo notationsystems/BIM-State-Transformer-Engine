@@ -14,6 +14,7 @@ from gat.engineering import (
     BeamBendingEvaluator,
     beam_assessment_record,
     explain_beam_decision_change,
+    read_material_certificate,
 )
 from gat.evidence import CalibratedObservation, EvidenceKind
 from gat.errors import LoweringError
@@ -33,20 +34,12 @@ CERTIFICATE = os.path.join(
 )
 
 
+def material_certificate_evidence(session: GatSession):
+    return read_material_certificate(CERTIFICATE).to_evidence(session.world)
+
+
 def material_evidence(session: GatSession) -> CalibratedObservation:
-    with open(CERTIFICATE, "rb") as stream:
-        source = stream.read()
-    return CalibratedObservation.from_source_bytes(
-        "MAT-CERT-B1-325",
-        session.var("Beam-B1", "YieldStrengthMPa"),
-        EvidenceKind.MEASURED,
-        325.0,
-        2.0,
-        "MPa",
-        source,
-        "coupon-test-material-certificate-v1",
-        hashlib.sha256(b"coupon-test-calibration-v1").hexdigest(),
-    )
+    return material_certificate_evidence(session).observation
 
 
 class BeamLoweringTests(unittest.TestCase):
@@ -116,7 +109,8 @@ class CalibratedEvidenceTests(unittest.TestCase):
         self.assertEqual(measured.provenance()["evidence"]["kind"], "MEASURED")
 
     def test_unit_mismatch_is_rejected_before_conditioning(self) -> None:
-        evidence = material_evidence(self.session)
+        certificate_evidence = material_certificate_evidence(self.session)
+        evidence = certificate_evidence.observation
         wrong = CalibratedObservation(
             evidence.evidence_id,
             evidence.subject,
@@ -155,11 +149,12 @@ class BeamAssuranceChainTests(unittest.TestCase):
             provenance={"phase": "prior"},
         )
 
-        evidence = material_evidence(self.session)
+        certificate_evidence = material_certificate_evidence(self.session)
+        evidence = certificate_evidence.observation
         before = self.session.world
         transition = self.session.run(
             evidence.transformation(self.session.world),
-            provenance=evidence.provenance(),
+            provenance=certificate_evidence.provenance(),
         )
         revised = self.evaluator.evaluate(
             self.session.world,
@@ -225,6 +220,22 @@ class BeamAssuranceChainTests(unittest.TestCase):
             self.session.ledger.events[2].provenance["evidence_digest"],
             evidence.digest(),
         )
+        certificate_record = self.session.ledger.events[2].provenance[
+            "material_certificate"
+        ]
+        self.assertEqual(
+            certificate_record["issuer"]["organization_id"],
+            "LAB-STRUCTURAL-001",
+        )
+        self.assertEqual(
+            certificate_record["material"]["batch_id"],
+            "HEAT-B1-2026-08",
+        )
+        self.assertEqual(
+            certificate_record["material"]["specimen_id"],
+            "COUPON-B1-17",
+        )
+        self.assertFalse(certificate_record["issuer"]["trust_verified"])
         replayed = replay_ledger(self.initial_world, self.session.ledger)
         self.assertEqual(replayed.world.digest(), self.session.world.digest())
         self.assertEqual(replayed.accepted, 1)

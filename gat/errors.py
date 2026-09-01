@@ -82,3 +82,11 @@ class LedgerError(GatError):
 
 class ProofManifestError(GatError):
     """A computation-proof manifest is malformed, unbound, or inconsistent."""
+
+
+class BeamGeometryError(GatError):
+    """IFC beam geometry could not be derived within the declared adapter scope."""
+
+
+class CertificateIngestionError(GatError):
+    """A material certificate failed its closed ingestion contract."""

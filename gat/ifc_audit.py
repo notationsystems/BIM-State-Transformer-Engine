@@ -23,6 +23,11 @@ import math
 from pathlib import Path
 from typing import Iterable
 
+from gat.adapters.ifc.beam_geometry import (
+    BEAM_GEOMETRY_METHOD,
+    BeamGeometryResult,
+    derive_all_beam_geometry,
+)
 from gat.adapters.ifc.lower import REQUIRED_QUANTITIES, lower_ifc
 from gat.adapters.ifc.parser import EnumVal, IfcFile, OMITTED, RawInstance, Ref, parse_ifc
 from gat.adapters.ifc.reader import (
@@ -148,6 +153,53 @@ class StageAudit:
 
 
 @dataclass(frozen=True)
+class BeamGeometryAudit:
+    beam_count: int
+    status_counts: tuple[tuple[str, int], ...]
+    derived_quantity_counts: tuple[tuple[str, int], ...]
+    results_digest: str
+
+    @classmethod
+    def from_results(
+        cls,
+        results: tuple[BeamGeometryResult, ...],
+    ) -> "BeamGeometryAudit":
+        statuses = Counter(result.status.value for result in results)
+        quantities = Counter()
+        for result in results:
+            if result.axis_length is not None:
+                quantities["Length"] += 1
+            if result.cross_section_area is not None:
+                quantities["CrossSectionArea"] += 1
+            if result.section_modulus_major is not None:
+                quantities["SectionModulusMajorM3"] += 1
+            if result.section_modulus_minor is not None:
+                quantities["SectionModulusMinorM3"] += 1
+        digest_payload = json.dumps(
+            [result.digest() for result in results],
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return cls(
+            len(results),
+            tuple(sorted(statuses.items())),
+            tuple(sorted(quantities.items())),
+            hashlib.sha256(digest_payload).hexdigest(),
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "method": BEAM_GEOMETRY_METHOD,
+            "beam_count": self.beam_count,
+            "status_counts": dict(self.status_counts),
+            "derived_quantity_counts": dict(self.derived_quantity_counts),
+            "results_digest": self.results_digest,
+            "authorizes_structural_decisions": False,
+        }
+
+
+@dataclass(frozen=True)
 class IfcAuditReport:
     source: str
     source_sha256: str
@@ -162,6 +214,7 @@ class IfcAuditReport:
     compilation: StageAudit
     verification: StageAudit
     world_digest: str | None = None
+    beam_geometry: BeamGeometryAudit | None = None
 
     @property
     def pipeline_ready(self) -> bool:
@@ -210,6 +263,9 @@ class IfcAuditReport:
                 "supported_product_status_counts": {
                     status: status_counts[status] for status in sorted(status_counts)
                 },
+                "beam_geometry": (
+                    self.beam_geometry.to_dict() if self.beam_geometry else None
+                ),
             },
             "adapter_scope": {
                 "supported_ifc_product_types": list(supported_types),
@@ -556,6 +612,24 @@ def _audit_parsed(
     compilation = _not_run("lowering did not produce a module")
     verification = _not_run("compilation did not produce a world")
     world_digest: str | None = None
+    beam_geometry: BeamGeometryAudit | None = None
+    beam_candidates = file.by_type("IFCBEAM")
+    if beam_candidates:
+        try:
+            beam_geometry = BeamGeometryAudit.from_results(
+                derive_all_beam_geometry(
+                    file,
+                    source_ifc_sha256=source_sha256,
+                )
+            )
+        except Exception as exc:
+            model_issues.append(
+                AuditIssue(
+                    "BEAM_GEOMETRY_AUDIT_FAILED",
+                    "ERROR",
+                    str(exc),
+                )
+            )
     try:
         module = lower_ifc(file, source=source)
         lowering = StageAudit(
@@ -602,6 +676,7 @@ def _audit_parsed(
         compilation,
         verification,
         world_digest,
+        beam_geometry,
     )
 
 
@@ -669,6 +744,7 @@ __all__ = [
     "AUDIT_FORMAT",
     "AuditIssue",
     "AuditStatus",
+    "BeamGeometryAudit",
     "EntityAudit",
     "EntityStatus",
     "IfcAuditReport",

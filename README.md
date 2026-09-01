@@ -110,9 +110,13 @@ fail-closed pending complete conversion-chain support.
 The commit-pinned public corpus now runs in CI. It includes the 19 MB
 buildingSMART Medical–Dental Clinic structural model: 317,671 IFC instances,
 4 storeys, and 738 beams. GAT parses and inventories the whole file, identifies
-all beams as structural candidates, and fails closed at the current
-multi-storey and source-evidence boundaries. Measured results also include the
-PCERT architecture scene and the 65 MB Schependomlaan model. See
+all beams as structural candidates, derives axis length for all 738, and
+derives cross-section area plus major/minor elastic section moduli for the 277
+beams represented as swept solids. The other 461 surface-model beams remain
+explicitly `LENGTH_ONLY`; no bounding-box guess or structural authority is
+implied. Multi-storey lowering and source-evidence admission still fail closed.
+Measured results also include the PCERT architecture scene and the 65 MB
+Schependomlaan model. See
 [`docs/real-ifc-validation-v1.md`](docs/real-ifc-validation-v1.md) for the
 reproducible corpus, exact failure taxonomy, and adapter-hardening order.
 
@@ -469,6 +473,11 @@ state snapshot, ledger, summary, and proof request let another runtime replay,
 verify, and continue the exact belief. See
 [`docs/beam-assurance-reference-chain.md`](docs/beam-assurance-reference-chain.md)
 for the contracts and explicit limitations.
+
+The material observation is read through a strict, versioned certificate
+contract that preserves issuer, batch, specimen, calibration, and exact source
+identity. The shipped certificate is a test fixture: signature, revocation,
+issuer trust, and professional decision authority are explicitly unverified.
 
 ### Proof-carrying computation claims
 

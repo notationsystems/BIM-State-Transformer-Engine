@@ -4,6 +4,16 @@
         -> decision or next evidence -> propagated, verified state
 """
 
+from gat.adapters.ifc import (
+    BEAM_GEOMETRY_FORMAT,
+    BEAM_GEOMETRY_METHOD,
+    BeamGeometryResult,
+    BeamGeometryStatus,
+    DerivedGeometryQuantity,
+    derive_all_beam_geometry,
+    derive_beam_geometry,
+)
+
 from gat.adapters.openusd import (
     DEFAULT_OPENUSD_READ_LIMITS,
     OPENUSD_CARRIER_FORMAT,
@@ -74,6 +84,8 @@ from gat.engine.transform import (
 )
 from gat.engine.verify import VerificationReport, run_invariants
 from gat.errors import (
+    BeamGeometryError,
+    CertificateIngestionError,
     GatError,
     LedgerError,
     LikelihoodCalibrationError,
@@ -103,12 +115,18 @@ from gat.ledger import (
 )
 from gat.engineering import (
     BEAM_BENDING_METHOD,
+    MATERIAL_CERTIFICATE_FORMAT,
+    MATERIAL_CERTIFICATE_SCHEMA_VERSION,
     BeamBendingCheck,
     BeamBendingEvaluator,
     BeamCheckResult,
     BeamDecisionChange,
+    MaterialCertificate,
+    MaterialCertificateEvidence,
     beam_assessment_record,
     explain_beam_decision_change,
+    parse_material_certificate,
+    read_material_certificate,
 )
 from gat.evidence import CalibratedObservation, EvidenceKind
 from gat.proof_manifest import (
@@ -163,6 +181,7 @@ from gat.ifc_audit import (
     AUDIT_FORMAT,
     AuditIssue,
     AuditStatus,
+    BeamGeometryAudit,
     EntityAudit,
     EntityStatus,
     IfcAuditReport,
@@ -188,11 +207,18 @@ __all__ = [
     "assess_decision",
     "AssessmentRecord",
     "BEAM_BENDING_METHOD",
+    "BEAM_GEOMETRY_FORMAT",
+    "BEAM_GEOMETRY_METHOD",
     "BeamBendingCheck",
     "BeamBendingEvaluator",
     "BeamCheckResult",
     "BeamDecisionChange",
+    "BeamGeometryAudit",
+    "BeamGeometryError",
+    "BeamGeometryResult",
+    "BeamGeometryStatus",
     "CalibratedObservation",
+    "CertificateIngestionError",
     "CompositeTransformation",
     "ComputationalEquivalenceReport",
     "ComputationProofManifest",
@@ -203,6 +229,7 @@ __all__ = [
     "DecisionEvidencePlan",
     "DecisionVerdict",
     "DEFAULT_OPENUSD_READ_LIMITS",
+    "DerivedGeometryQuantity",
     "EntityId",
     "EntityAudit",
     "EntityStatus",
@@ -230,6 +257,10 @@ __all__ = [
     "LikelihoodCalibrationError",
     "LengthUnitAudit",
     "LoweringError",
+    "MATERIAL_CERTIFICATE_FORMAT",
+    "MATERIAL_CERTIFICATE_SCHEMA_VERSION",
+    "MaterialCertificate",
+    "MaterialCertificateEvidence",
     "MinimumDecision",
     "MinimumPreference",
     "DifferenceAssessment",
@@ -298,6 +329,8 @@ __all__ = [
     "decision_policy_record",
     "decode_causal_record",
     "decode_transformation",
+    "derive_all_beam_geometry",
+    "derive_beam_geometry",
     "encode_transformation",
     "encode_causal_record",
     "execute",
@@ -310,9 +343,11 @@ __all__ = [
     "difference_check",
     "preview",
     "preview_change",
+    "parse_material_certificate",
     "run_invariants",
     "read_openusd",
     "read_ledger",
+    "read_material_certificate",
     "read_computation_proof_manifest",
     "read_snapshot",
     "reconstruct_snapshot",

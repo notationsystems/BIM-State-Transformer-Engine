@@ -97,6 +97,20 @@ class PublicIfcCorpusTests(unittest.TestCase):
                         serialized["pipeline"]["lowering"]["error_type"],
                         expected["pipeline_lowering_error_type"],
                     )
+                if "beam_geometry_status_counts" in expected:
+                    beam_geometry = serialized["inventory"]["beam_geometry"]
+                    self.assertIsNotNone(beam_geometry)
+                    self.assertEqual(
+                        beam_geometry["status_counts"],
+                        expected["beam_geometry_status_counts"],
+                    )
+                    self.assertEqual(
+                        beam_geometry["derived_quantity_counts"],
+                        expected["beam_geometry_quantity_counts"],
+                    )
+                    self.assertFalse(
+                        beam_geometry["authorizes_structural_decisions"]
+                    )
 
 
 if __name__ == "__main__":
