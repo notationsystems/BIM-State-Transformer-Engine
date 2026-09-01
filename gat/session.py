@@ -28,6 +28,7 @@ class GatSession:
         self.world = world
         self.source_file = source_file
         self.trace = ExecutionTrace()
+        self.imported_trace: list = []
         report = run_invariants(world)
         self.trace.add(
             "compile",
@@ -96,7 +97,44 @@ class GatSession:
     def verify(self) -> VerificationReport:
         return run_invariants(self.world)
 
+    @classmethod
+    def load_usd(cls, path: str) -> "GatSession":
+        """Reconstruct a session from a GAT USD stage (state-space interchange)."""
+        from gat.adapters.usd_io import load_usd
+
+        world, imported_trace = load_usd(path)
+        session = cls(world, None)
+        session.imported_trace = imported_trace
+        if imported_trace:
+            session.trace.add(
+                "import",
+                path,
+                f"{len(imported_trace)} provenance events carried over",
+                "-",
+                world.digest(),
+            )
+        return session
+
     # -- export ------------------------------------------------------------
+
+    def export_usd(self, path: str) -> int:
+        """Serialize the full computational state as a USD stage."""
+        from gat.adapters.usd_io import export_usd
+
+        events = [
+            {
+                "seq": e.seq,
+                "stage": e.stage,
+                "name": e.name,
+                "detail": e.detail,
+                "verify": e.verify,
+                "digest": e.digest,
+            }
+            for e in self.trace.events
+        ]
+        count = export_usd(self.world, path, events)
+        self.trace.add("export", path, f"usd stage, {count} entities", "-", self.world.digest())
+        return count
 
     def export_ifc(self, path: str) -> tuple[int, int]:
         if self.source_file is None:

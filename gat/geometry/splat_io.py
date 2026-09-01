@@ -33,6 +33,7 @@ _SH_C0 = 0.28209479177387814  # Y_0^0; color = 0.5 + C0 * f_dc
 
 
 def _inverse_sigmoid(x: float) -> float:
+    x = min(max(x, 1e-6), 1.0 - 1e-6)  # domain guard: opacity 0/1 saturates
     return math.log(x / (1.0 - x))
 
 

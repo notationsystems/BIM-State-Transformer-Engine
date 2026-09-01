@@ -329,6 +329,7 @@ class AggregationConsistent(Invariant):
                     m
                     for m in world.graph.targets(kind, eid)
                     if m.ifc_class == member_class
+                    and member_qty in world.module.entities[m].slots
                 ]
                 total = sum(
                     world.full.mean(world.module.entities[m].var(member_qty))

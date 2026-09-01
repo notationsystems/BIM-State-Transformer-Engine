@@ -10,7 +10,11 @@ Every shipped operator has an exact raw-space perturbation map:
                         forgets the perturbation in the overridden channel)
     ObserveQuantity     J = I - K H                (a contraction of the
                         observed directions; K from the same conditioning
-                        math the engine executes)
+                        math the engine executes.  Exact for linear
+                        observations; for nonlinear derived observations it
+                        is the linearization at the current mean — the
+                        mu-dependence of K and H contributes higher-order
+                        terms when the innovation is nonzero)
     Composite           product of its steps' maps
 
 For a sequence ``T_0 .. T_{n-1}`` applied at linearization points along the

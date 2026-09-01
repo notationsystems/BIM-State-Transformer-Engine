@@ -17,12 +17,16 @@ buildings and scanners agree about *up* — via:
 * 8 deterministic yaw starts (k * pi/4), each with centroid-matched
   initial translation; best final NLL wins, ties broken by start index.
 
-The Gauss-Newton Hessian at the optimum is the information matrix of the
-pose — its inverse is the pose observation covariance.  v0 *reports* it
-and gates on fit quality; conditioning dimensional state on registered
-residuals is the designed v1 extension (the naive surface-centroid
-observation of element centers is biased for partially visible elements,
-so it is deliberately not shipped).
+The reported information matrix is the *complete-data* (responsibility-
+weighted) Gauss-Newton Hessian at the optimum.  For a mixture likelihood
+this overstates the observed information (the missing-data correction of
+Louis' identity is not subtracted), so ``pose_sigma`` is a lower bound on
+the pose uncertainty — useful for gating and relative comparisons, and
+labeled as the approximation it is.  v0 *reports* it and gates on fit
+quality; conditioning dimensional state on registered residuals is the
+designed v1 extension (the naive surface-centroid observation of element
+centers is biased for partially visible elements, so it is deliberately
+not shipped).
 
 Everything is deterministic: scan synthesis takes an explicit seed, and
 the optimizer has no stochastic steps.
@@ -69,7 +73,12 @@ class RegistrationResult:
     accepted: bool                 # fit-quality gate for any write-back
 
     def pose_sigma(self) -> np.ndarray:
-        """Marginal standard deviations of the pose estimate."""
+        """Marginal standard deviations of the pose estimate.
+
+        Derived from the complete-data Gauss-Newton information matrix, so
+        these are LOWER bounds on the true pose uncertainty (see module
+        docstring).
+        """
         cov = np.linalg.inv(self.info_matrix)
         return np.sqrt(np.clip(np.diag(cov), 0.0, None))
 

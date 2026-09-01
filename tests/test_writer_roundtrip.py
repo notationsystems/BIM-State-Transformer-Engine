@@ -100,9 +100,10 @@ class WriterRoundtripTests(unittest.TestCase):
         cls.tmp.cleanup()
 
     def test_export_counts(self) -> None:
-        # 19 quantity-backed raw slots patched (24 raw vars minus the 5
-        # UnitCost slots, which come from a property set, not a quantity).
-        self.assertEqual(self.patched, 19)
+        # All 24 raw slots are source-backed and patched: 19 quantity
+        # records plus the 5 UnitCost pset properties (patched inside
+        # their GAT_Material IfcPropertySingleValue records).
+        self.assertEqual(self.patched, 24)
         # Appended: per entity with raw slots, one property per raw slot
         # plus a pset and a rel.  storey(1)+2, 5 walls(2 or 3 raw each:
         # S/N/E/W have Length,Width,UnitCost=3; Party has 3)+2 each,

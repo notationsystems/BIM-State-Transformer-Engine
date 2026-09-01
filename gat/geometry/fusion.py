@@ -61,6 +61,7 @@ def kl_gauss(mu0, S0, mu1, S1) -> float:
 @dataclass(frozen=True)
 class LodNode:
     label: str
+    row: int               # element row for leaves; -1 for merged levels
     weight: float          # volume carried by this node [m3]
     mean: np.ndarray
     cov: np.ndarray
@@ -68,36 +69,37 @@ class LodNode:
     merge_error: float     # max KL(member || merged), 0 for leaves
 
 
+def _element_node(scene: GeometryScene, element) -> LodNode:
+    prims = scene.cloud.of_element(element.row)
+    w, mu, S = moment_match(prims.weights, prims.means, prims.covs)
+    err = max(
+        (kl_gauss(prims.means[k], prims.covs[k], mu, S) for k in range(len(prims))),
+        default=0.0,
+    )
+    return LodNode(element.name, element.row, w, mu, S, len(prims), err)
+
+
 def element_level(scene: GeometryScene) -> tuple[LodNode, ...]:
-    """L1: one moment-matched Gaussian per element."""
-    nodes = []
-    for element in scene.elements:
-        prims = scene.cloud.of_element(element.row)
-        w, mu, S = moment_match(prims.weights, prims.means, prims.covs)
-        err = max(
-            (kl_gauss(prims.means[k], prims.covs[k], mu, S) for k in range(len(prims))),
-            default=0.0,
-        )
-        nodes.append(LodNode(element.name, w, mu, S, len(prims), err))
-    return tuple(nodes)
+    """L1: one moment-matched Gaussian per element (identified by row,
+    so duplicate element names are harmless)."""
+    return tuple(_element_node(scene, element) for element in scene.elements)
 
 
 def merged_level(
     scene: GeometryScene, label: str, member_rows: list[int]
 ) -> LodNode:
     """Merge a set of elements into one macro Gaussian (L2/L3)."""
+    member_set = set(member_rows)
     mask = np.isin(scene.cloud.element_index, member_rows)
     prims = scene.cloud.select(mask)
     w, mu, S = moment_match(prims.weights, prims.means, prims.covs)
-    element_nodes = [n for n in element_level(scene) if _row_of(scene, n.label) in member_rows]
+    element_nodes = [
+        _element_node(scene, e) for e in scene.elements if e.row in member_set
+    ]
     err = max(
         (kl_gauss(n.mean, n.cov, mu, S) for n in element_nodes), default=0.0
     )
-    return LodNode(label, w, mu, S, len(prims), err)
-
-
-def _row_of(scene: GeometryScene, name: str) -> int:
-    return scene.element_by_name(name).row
+    return LodNode(label, -1, w, mu, S, len(prims), err)
 
 
 def building_level(scene: GeometryScene) -> LodNode:
@@ -115,14 +117,19 @@ class FrameTransform:
     b: np.ndarray  # (3,)
 
     def apply_cloud(self, cloud: GaussianCloud) -> GaussianCloud:
+        from gat.geometry.primitives import FEATURE_NAMES
+
         means = cloud.means @ self.A.T + self.b
         covs = np.einsum("ij,kjl,ml->kim", self.A, cloud.covs, self.A)
         scale = abs(float(np.linalg.det(self.A)))
+        features = cloud.features.copy()
+        # Keep the log_volume channel equal to log(weight) after scaling.
+        features[:, FEATURE_NAMES.index("log_volume")] += np.log(scale)
         out = GaussianCloud(
             means,
             covs,
             cloud.weights * scale,
-            cloud.features.copy(),
+            features,
             cloud.element_index.copy(),
             cloud.version,
         )
