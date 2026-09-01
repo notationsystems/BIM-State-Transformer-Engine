@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install runtime dependency
+        run: python -m pip install numpy
+
+      - name: Run test suite
+        run: python -m unittest discover -v
+
+      - name: Run the milestone demo (self-asserting)
+        run: python -m gat.demo ci-out
+
+      - name: Run the geometry demo (self-asserting)
+        run: python -m gat.demo.geometry ci-out
+
+      - name: Run the USD interchange demo (self-asserting)
+        run: python -m gat.demo.usd ci-out
