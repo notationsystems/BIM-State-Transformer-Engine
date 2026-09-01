@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import tempfile
 import unittest
@@ -11,11 +12,16 @@ import gat.demo
 import numpy as np
 from gat.adapters.openusd import generate_openusd_keypair, openusd_available
 from gat.engine.transform import ObserveLinearized
-from gat.headless import REQUEST_FORMAT, RESPONSE_FORMAT, handle_request
+from gat.headless import REQUEST_FORMAT, RESPONSE_FORMAT, handle_request, main
 from gat.session import GatSession
 
 
 MODEL = os.path.join(os.path.dirname(gat.demo.__file__), "model.ifc")
+BEAM_MODEL = os.path.join(os.path.dirname(gat.demo.__file__), "beam_model.ifc")
+MATERIAL_CERTIFICATE = os.path.join(
+    os.path.dirname(gat.demo.__file__),
+    "material_certificate.json",
+)
 
 
 class HeadlessContractTests(unittest.TestCase):
@@ -74,6 +80,80 @@ class HeadlessContractTests(unittest.TestCase):
         self.assertEqual(result["disposition"], "REQUEST_EVIDENCE")
         self.assertEqual(result["uncovered_check_ids"], ["width", "height"])
         self.assertFalse(result["may_authorize"])
+
+    def test_validated_beam_chain_is_exposed_without_authorizing(self) -> None:
+        request = self.request(
+            "beam_assurance",
+            {
+                "case_id": "beam-b1-certificate",
+                "beam_name": "Beam-B1",
+                "factored_demand_n_m": 301_000.0,
+                "confidence": 0.95,
+                "material_certificate_path": MATERIAL_CERTIFICATE,
+                "label": "Beam-B1 factored bending",
+            },
+        )
+        request["state"]["path"] = BEAM_MODEL
+        response = handle_request(request)
+        result = response["result"]
+
+        self.assertEqual(response["operation"], "beam_assurance")
+        self.assertEqual(result["prior"]["verdict"], "SATISFIED")
+        self.assertEqual(result["revised"]["verdict"], "VIOLATED")
+        self.assertTrue(result["decision_change"]["verdict_changed"])
+        self.assertTrue(result["verification"]["passed"])
+        self.assertEqual(
+            response["world_digest"],
+            result["transition"]["result_world_digest"],
+        )
+        self.assertEqual(
+            result["revised"]["computation"]["independent_oracle_id"],
+            "aisc-v16-example-f1-1b-lrfd-v1",
+        )
+        self.assertFalse(result["assurance"]["certificate_signature_verified"])
+        self.assertFalse(result["assurance"]["issuer_trust_verified"])
+        self.assertFalse(result["assurance"]["may_authorize"])
+
+    def test_beam_request_rejects_unknown_fields(self) -> None:
+        request = self.request(
+            "beam_assurance",
+            {
+                "case_id": "beam-b1-certificate",
+                "beam_name": "Beam-B1",
+                "factored_demand_n_m": 301_000.0,
+                "confidence": 0.95,
+                "material_certificate_path": MATERIAL_CERTIFICATE,
+                "assume_compact": True,
+            },
+        )
+        request["state"]["path"] = BEAM_MODEL
+        with self.assertRaisesRegex(ValueError, "extra"):
+            handle_request(request)
+
+    def test_beam_assurance_runs_through_the_headless_cli(self) -> None:
+        request = self.request(
+            "beam_assurance",
+            {
+                "case_id": "beam-b1-cli",
+                "beam_name": "Beam-B1",
+                "factored_demand_n_m": 301_000.0,
+                "confidence": 0.95,
+                "material_certificate_path": MATERIAL_CERTIFICATE,
+            },
+        )
+        request["state"]["path"] = BEAM_MODEL
+        with tempfile.TemporaryDirectory() as directory:
+            request_path = os.path.join(directory, "request.json")
+            response_path = os.path.join(directory, "response.json")
+            with open(request_path, "w", encoding="utf-8") as stream:
+                json.dump(request, stream)
+            status = main([request_path, "-o", response_path])
+            with open(response_path, "r", encoding="utf-8") as stream:
+                response = json.load(stream)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(response["operation"], "beam_assurance")
+        self.assertEqual(response["result"]["disposition"], "VIOLATED")
 
     def test_headless_receipt_must_exist_in_the_loaded_state_ledger(self) -> None:
         payload = self.opening_payload()

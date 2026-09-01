@@ -54,15 +54,17 @@ check must be covered by calibrated evidence bound to the same assessed
 world.
 
 `gat-headless` provides a closed, read-only JSON boundary for CI and host
-applications. Evidence receipts supplied over that boundary must resolve to
+applications, including the validated material-certificate -> ANSI/AISC beam
+verdict chain. Evidence receipts supplied over that boundary must resolve to
 a verified transition in the state's hash-chained ledger and, before they can
 close a case, arrive in an OpenUSD carrier whose signature verifies against a
 deployment-configured trusted key. A response is still a recommendation rather than
 an approval or external action.
 
 The first host adapter is in `integrations/blender/gat_assurance`: a
-self-contained Blender 4.2+ sidebar that reads headless acceptance responses,
-shows the next evidence request, and colors matching Blender/Bonsai objects
+self-contained Blender 4.2+ sidebar that reads headless acceptance and beam
+assurance responses, shows the next evidence request or capacity/verdict
+change with method/oracle identity, and colors matching Blender/Bonsai objects
 without modifying IFC state. See
 [`docs/workflow-deployment-v1.md`](docs/workflow-deployment-v1.md) for the
 protocol, trust boundary, extension packaging, and current limits.
