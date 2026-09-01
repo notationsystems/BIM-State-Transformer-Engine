@@ -37,3 +37,42 @@ jobs:
 
       - name: Run the construction workflow demo (self-asserting)
         run: python -m gat.demo.workflow
+
+  test-extras:
+    # The optional [openusd] stack: without this job the signed-carrier and
+    # pxr tests only ever skip.  Also exercises the CLI and the demos the
+    # base job does not cover.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install with the openusd extra
+        run: python -m pip install ".[openusd]"
+
+      - name: Run the full test suite (no optional skips)
+        run: python -m unittest discover -v
+
+      - name: Run the ledger replay demo (self-asserting)
+        run: python -m gat.demo.ledger_replay ci-out-ledger.json
+
+      - name: Run the portability demos (self-asserting)
+        run: |
+          python -m gat.demo.portability ci-out
+          python -m gat.demo.openusd_portability ci-out
+
+      - name: Run the planning demos (self-asserting)
+        run: |
+          python -m gat.demo.active_inference ci-out
+          python -m gat.demo.temporal_process ci-out
+
+      - name: Exercise the gat CLI
+        run: |
+          gat verify gat/demo/model.ifc
+          gat check gat/demo/model.ifc
+          gat inspect gat/demo/model.ifc --var "Level 1.TotalWallCost"
+          gat splats gat/demo/model.ifc ci-out-splats --variations 2
+          gat sample gat/demo/model.ifc --n 100

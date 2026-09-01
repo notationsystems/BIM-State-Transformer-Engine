@@ -183,6 +183,22 @@ S2_transferred ≃ S2_continuous     (posterior mean and covariance BITWISE equa
 
 All eight transfer levels — geometry, BIM semantics, topology, Gaussian state, computational state, transformation semantics, provenance, and operational state-space equivalence — pass in the shipped demo and test suite (`tests/test_usd_interchange.py`).
 
+### The `gat` command line
+
+The engine without writing Python — for BIM coordinators, GIS pipelines, and artists:
+
+```bash
+gat verify  model.ifc                          # invariants + compliance under uncertainty
+gat check   model.ifc --proposed duct.json     # probabilistic clash report; exit 1 on a likely clash
+gat inspect model.ifc --var "Level 1.TotalWallCost"   # mean ± sigma, sensitivities, variance attribution
+gat splats  model.ifc out/ --variations 25     # 3DGS splat PLYs: nominal + 25 sampled as-builts
+gat sample  model.ifc --n 500                  # invariant checking over belief realizations
+```
+
+Every command is deterministic and read-only; `--json` switches to machine output. `gat splats --variations` is the **belief-driven variation generator**: each PLY is a sampled realization of `N(mu, Sigma)` — a physically consistent plausible as-built whose imperfections are correlated exactly as the model says (walls sharing a storey height move together), with a manifest recording each sample's dimensions and verification status. Grounded procedural variation for art and previz pipelines, instead of noise functions.
+
+Sampling also closes a scientific loop: `gat.engine.sampling.empirical_pair_clearance` Monte-Carlo-estimates clash probabilities from realizations and the test suite asserts they agree with the analytic delta-method scores within Monte-Carlo error — the uncertainty machinery is *measured* to be calibrated, not assumed.
+
 ### Analysis APIs
 
 ```python
