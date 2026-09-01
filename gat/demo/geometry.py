@@ -10,8 +10,8 @@ Seven acts over the shipped two-office model:
                     parameters in relative uncertainty.
   G2. ATTENTION   — structural attention propagation vs the content-blind
                     Laplacian ablation.
-  G3. REGISTER    — scan-to-BIM: recover a withheld rigid transform from a
-                    synthetic laser scan by GMM alignment.
+  G3. ASSURE      — register scan evidence, extract a calibrated support-face
+                    likelihood, condition the belief, and close a decision.
   G4. FUSE        — level-of-detail moment merging and an exact GIS frame
                     transport.
   G5. COMPLY      — design compliance margins under the joint belief.
@@ -30,9 +30,14 @@ import numpy as np
 
 from gat.geometry import (
     AttentionConfig,
+    ClearanceDecision,
+    ClearanceLikelihoodCalibration,
+    IndependentPoseCalibration,
     OrientedBox,
-    ScanRegistrar,
     RigidTransformZ,
+    ScanRegistrar,
+    adapt_clearance_likelihood,
+    assess_clearance,
     building_level,
     check_compliance,
     derive_scene,
@@ -40,6 +45,7 @@ from gat.geometry import (
     element_level,
     export_splat_ply,
     laplacian_baseline,
+    plan_clearance_evidence,
     propagate,
     score_proposed_box,
     synthesize_scan,
@@ -177,6 +183,72 @@ def main() -> int:
             "EM outer iteration must be monotone within each annealing stage"
         )
     assert yaw_err < math.radians(0.2) and trans_err < 0.02 and result.accepted
+    evidence = registrar.evidence(scan, result)
+    print(
+        f"evidence quarantine: {evidence.inlier_effective_points:.1f} effective "
+        f"points across {len(evidence.elements)} solid BIM elements; "
+        f"posterior outlier fraction {evidence.outlier_fraction:.3f}"
+    )
+    weakest = min(evidence.elements, key=lambda item: item.assignment_confidence)
+    print(
+        f"most ambiguous element: {weakest.element_name} "
+        f"(assignment confidence {weakest.assignment_confidence:.3f}); "
+        "no BIM dimensions were conditioned"
+    )
+    borderline_duct = OrientedBox(
+        origin=(4.0, 1.8, 3.06), angle=0.0, extents=(3.0, 0.4, 0.4)
+    )
+    clearance = assess_clearance(
+        scene,
+        ClearanceDecision(
+            borderline_duct,
+            required_clearance=0.05,
+            confidence=0.95,
+            position_sigma=0.002,
+            label="borderline MEP route",
+        ),
+    )
+    evidence_plan = plan_clearance_evidence(clearance, evidence)
+    assert not clearance.resolved and evidence_plan.selected is not None
+    print(
+        f"as-built assurance: {clearance.verdict}; "
+        f"P(any clearance violation) in "
+        f"[{clearance.p_any_violation_lower:.3f}, "
+        f"{clearance.p_any_violation_upper:.3f}]"
+    )
+    print(
+        f"next evidence: {evidence_plan.selected.action} "
+        f"{evidence_plan.selected.element_name}; canonical BIM unchanged"
+    )
+    independent_pose = IndependentPoseCalibration(
+        transform=truth,
+        covariance=np.diag(
+            [math.radians(0.06) ** 2, 0.010**2, 0.010**2, 0.003**2]
+        ),
+        scan_digest=result.scan_digest,
+        source_id="synthetic survey control (independent of BIM fit)",
+    )
+    likelihood = adapt_clearance_likelihood(
+        scene,
+        registrar,
+        scan,
+        result,
+        evidence,
+        evidence_plan,
+        independent_pose,
+        ClearanceLikelihoodCalibration(calibration_sigma=0.003),
+    )
+    print(likelihood.render())
+    update = session.run(likelihood.observation)
+    scene = derive_scene(session.world)
+    resolved_clearance = assess_clearance(scene, clearance.decision)
+    print(
+        f"after condition -> propagate -> verify: {resolved_clearance.verdict}; "
+        f"P(any violation) <= "
+        f"{resolved_clearance.p_any_violation_upper:.4f}; "
+        f"verification {'PASS' if update.report.passed else 'FAIL'}"
+    )
+    assert update.committed and resolved_clearance.verdict.name == "SATISFIED"
 
     # ---- G4 --------------------------------------------------------------
     _hr("G4  FUSE: level-of-detail merging and GIS transport")

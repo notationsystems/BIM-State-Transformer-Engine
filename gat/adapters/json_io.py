@@ -1,10 +1,14 @@
-"""JSON export of the canonical architectural state.
+"""JSON projection of the canonical architectural state.
 
-A machine-readable snapshot of the world — entities (with attributes and
-placements), relationships, means, sigmas, and the strongest pairwise
-correlations — for downstream toolchains that consume BIM state without
-speaking SPF (e.g. render-prompt extractors, analysis pipelines,
-dashboards).
+A machine-readable downstream view of the world — entities, placements,
+attributes, relationships, means, sigmas, and the strongest pairwise
+correlations — for
+downstream toolchains that consume BIM state without speaking SPF (e.g.
+render-prompt extractors, analysis pipelines, dashboards).
+
+This format is intentionally not a restart contract: it omits the closed IR,
+the indexed full joint covariance, and constraints.  Use
+``gat.state_snapshot`` when another runtime must continue computation.
 """
 
 from __future__ import annotations

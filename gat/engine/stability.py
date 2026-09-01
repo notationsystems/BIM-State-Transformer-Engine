@@ -8,13 +8,15 @@ Every shipped operator has an exact raw-space perturbation map:
     ScaleParameter      J = I with J_kk = factor
     SetParameter        J = I with row k zeroed    (the do-intervention
                         forgets the perturbation in the overridden channel)
-    ObserveQuantity     J = I - K H                (a contraction of the
+    Observation         J = I - K H                (a contraction of the
                         observed directions; K from the same conditioning
                         math the engine executes.  Exact for linear
                         observations; for nonlinear derived observations it
                         is the linearization at the current mean — the
                         mu-dependence of K and H contributes higher-order
                         terms when the innovation is nonzero)
+    Linear process      J = F                      (the declared temporal
+                        transition embedded in raw space)
     Composite           product of its steps' maps
 
 For a sequence ``T_0 .. T_{n-1}`` applied at linearization points along the
@@ -43,16 +45,18 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from gat.engine.dynamics import EvolveLinearGaussian
 from gat.engine.executor import World
-from gat.engine.propagate import jacobian_rows
 from gat.engine.transform import (
     CompositeTransformation,
-    ObserveQuantity,
+    ObservationTransformation,
+    ObserveLinearized,
     ScaleParameter,
     SetParameter,
     ShiftParameter,
     Transformation,
 )
+from gat.errors import BindingError
 from gat.gaussian.linalg import chol_psd, chol_solve, symmetrize
 
 
@@ -71,10 +75,18 @@ def step_jacobian(world: World, t: Transformation) -> np.ndarray:
         row = world.binding.raw_index.row(t.var)
         J[row, row] = 0.0
         return J
-    if isinstance(t, ObserveQuantity):
-        vars = tuple(m.var for m in t.measurements)
-        H, _ = jacobian_rows(world.binding, world.belief, vars)
-        R = np.diag([m.noise_sigma**2 for m in t.measurements])
+    if isinstance(t, EvolveLinearGaussian):
+        return t.full_transition(world.binding)
+    if isinstance(t, ObservationTransformation):
+        if (
+            isinstance(t, ObserveLinearized)
+            and t.expected_world_digest != world.digest()
+        ):
+            raise BindingError(
+                "linearized observation is stale for this stability world"
+            )
+        H, _, _, noise = t.observation_model(world.binding, world.belief)
+        R = np.diag(noise)
         S = symmetrize(H @ world.belief.sigma @ H.T + R)
         L, _ = chol_psd(S)
         K = chol_solve(L, H @ world.belief.sigma).T

@@ -20,6 +20,11 @@ Semantics of the shipped operators:
   or derived quantities (see :mod:`gat.gaussian.condition`).  Observation
   is the epistemic dual of intervention: it *sharpens* belief through
   correlations rather than severing them.
+* ``ObserveLinearized`` — conditioning on an adapter-supplied scalar
+  likelihood row, bound to the exact prior belief and evidence provenance.
+* ``EvolveLinearGaussian`` (in :mod:`gat.engine.dynamics`) — calibrated
+  temporal prediction with exact affine covariance transport and process-noise
+  injection.
 * ``CompositeTransformation`` — sequential composition via ``>>`` with
   atomic verification semantics (the executor verifies once, after the
   whole composite; any failure rolls back all steps).
@@ -97,6 +102,25 @@ class Transformation(ABC):
 
     def __rshift__(self, other: "Transformation") -> "CompositeTransformation":
         return self.then(other)
+
+
+class ObservationTransformation(Transformation):
+    """Marker and shared execution path for Gaussian observations."""
+
+    def __init__(self) -> None:
+        self.record: ConditioningRecord | None = None
+
+    @abstractmethod
+    def observation_model(
+        self, binding: GaussianBinding, belief: GaussianState
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Return ``H, predicted, observed, noise_variances`` in raw space."""
+
+    def apply(self, binding: GaussianBinding, belief: GaussianState) -> GaussianState:
+        H, predicted, observed, noise = self.observation_model(binding, belief)
+        posterior, record = condition(belief, H, predicted, observed, noise)
+        self.record = record
+        return posterior
 
 
 def _require_raw(binding: GaussianBinding, var: VarId, op: str) -> int:
@@ -186,18 +210,18 @@ class ScaleParameter(Transformation):
         return belief.replace(mu=mu, sigma=sigma)
 
 
-class ObserveQuantity(Transformation):
+class ObserveQuantity(ObservationTransformation):
     """Condition the belief on one or more measurements (raw or derived)."""
 
     name = "observe_quantity"
 
     def __init__(self, measurements: tuple[Measurement, ...] | Measurement):
+        super().__init__()
         if isinstance(measurements, Measurement):
             measurements = (measurements,)
         if not measurements:
             raise ValueError("at least one measurement required")
         self.measurements = tuple(measurements)
-        self.record: ConditioningRecord | None = None
 
     @classmethod
     def single(cls, var: VarId, value: float, noise_sigma: float) -> "ObserveQuantity":
@@ -227,16 +251,115 @@ class ObserveQuantity(Transformation):
                     out.add(parent_var)
         return tuple(sorted(out))
 
-    def apply(self, binding: GaussianBinding, belief: GaussianState) -> GaussianState:
+    def observation_model(
+        self, binding: GaussianBinding, belief: GaussianState
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         vars = tuple(m.var for m in self.measurements)
         H, predicted = jacobian_rows(binding, belief, vars)
         observed = np.array([m.value for m in self.measurements], dtype=np.float64)
         noise = np.array(
             [m.noise_sigma**2 for m in self.measurements], dtype=np.float64
         )
-        posterior, record = condition(belief, H, predicted, observed, noise)
-        self.record = record
-        return posterior
+        return H, predicted, observed, noise
+
+
+class ObserveLinearized(ObservationTransformation):
+    """A provenance-bound scalar likelihood supplied by a trusted adapter.
+
+    The row and exact nonlinear prediction are calibrated at one belief.
+    Reusing them after any intervening update is rejected rather than
+    silently applying a stale EKF linearization.
+    """
+
+    name = "observe_linearized"
+
+    def __init__(
+        self,
+        row: np.ndarray,
+        predicted: float,
+        observed: float,
+        noise_sigma: float,
+        raw_targets: tuple[VarId, ...],
+        expected_raw_order: tuple[VarId, ...],
+        expected_belief_digest: str,
+        expected_world_digest: str,
+        evidence_digest: str,
+        label: str,
+    ):
+        super().__init__()
+        row = np.asarray(row, dtype=np.float64).reshape(-1)
+        if row.size == 0 or not np.isfinite(row).all() or not np.any(row != 0.0):
+            raise ValueError("linearized observation row must be finite and nonzero")
+        if not np.isfinite([predicted, observed, noise_sigma]).all():
+            raise ValueError("linearized observation values must be finite")
+        if noise_sigma <= 0.0:
+            raise ValueError("linearized observation noise_sigma must be positive")
+        if not raw_targets:
+            raise ValueError("linearized observation requires raw targets")
+        if len(expected_raw_order) != row.size:
+            raise ValueError("expected raw order must match observation row length")
+        nonzero_targets = {
+            expected_raw_order[int(index)] for index in np.flatnonzero(row)
+        }
+        if nonzero_targets != set(raw_targets):
+            raise ValueError("raw targets must exactly match nonzero row entries")
+        if (
+            not expected_belief_digest
+            or not expected_world_digest
+            or not evidence_digest
+            or not label
+        ):
+            raise ValueError("linearized observation provenance must be non-empty")
+        self.row = row.copy()
+        self.row.setflags(write=False)
+        self.predicted = float(predicted)
+        self.observed = float(observed)
+        self.noise_sigma = float(noise_sigma)
+        self._raw_targets = tuple(raw_targets)
+        self.expected_raw_order = tuple(expected_raw_order)
+        self.expected_belief_digest = expected_belief_digest
+        self.expected_world_digest = expected_world_digest
+        self.evidence_digest = evidence_digest
+        self.label = label
+
+    def params(self) -> dict[str, object]:
+        return {
+            "label": self.label,
+            "predicted": self.predicted,
+            "observed": self.observed,
+            "noise_sigma": self.noise_sigma,
+            "evidence": self.evidence_digest,
+            "prior": self.expected_belief_digest,
+            "world": self.expected_world_digest,
+        }
+
+    def target_vars(self) -> tuple[VarId, ...]:
+        return self._raw_targets
+
+    def observation_model(
+        self, binding: GaussianBinding, belief: GaussianState
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        if belief.digest() != self.expected_belief_digest:
+            raise BindingError(
+                "linearized observation is stale: the belief changed after calibration"
+            )
+        if binding.raw_index.vars != self.expected_raw_order:
+            raise BindingError(
+                "linearized observation is bound to a different raw variable order"
+            )
+        if self.row.shape != (binding.n_raw,):
+            raise BindingError(
+                f"linearized observation row has {self.row.size} entries; "
+                f"binding requires {binding.n_raw}"
+            )
+        for var in self._raw_targets:
+            _require_raw(binding, var, self.name)
+        return (
+            self.row.reshape(1, -1),
+            np.array([self.predicted]),
+            np.array([self.observed]),
+            np.array([self.noise_sigma**2]),
+        )
 
 
 class CompositeTransformation(Transformation):

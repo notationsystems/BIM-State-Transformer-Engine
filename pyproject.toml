@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gat-bim"
 version = "0.1.0"
-description = "GAT — Gaussian Architectural Transformer: a computational compiler for transforming, propagating, and reasoning over BIM state using Gaussian representations"
+description = "A decision-focused, uncertainty-aware computational state engine for BIM"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -20,6 +20,9 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+openusd = ["usd-core>=26.8,<27", "cryptography>=40"]
 
 [project.urls]
 Repository = "https://github.com/notationsystems/GAT-Gaussian-Architectural-Transformer-for-BIM"

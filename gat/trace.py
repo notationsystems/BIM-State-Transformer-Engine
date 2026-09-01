@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 @dataclass(frozen=True)
 class TraceEvent:
     seq: int
-    stage: str          # "compile" | "transform" | "observe" | "reject" | "export"
+    stage: str          # compile | transform | observe | reject | export | resume
     name: str
     detail: str
     verify: str         # "PASS" | "WARN" | "FAIL" | "-"

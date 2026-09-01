@@ -1,23 +1,60 @@
 # GAT — Gaussian Architectural Transformer for BIM
 
-**GAT (Gaussian Architectural Transformer)** is a computational compiler for transforming, propagating, and reasoning over Building Information Modeling (BIM) state using Gaussian representations.
+**GAT (Gaussian Architectural Transformer)** is a decision-focused,
+uncertainty-aware state engine for Building Information Modeling (BIM).  Its
+compiler substrate turns IFC design intent into an auditable architectural
+belief that can absorb physical evidence, propagate consequences, and verify
+the resulting state.
 
 GAT investigates whether BIM can be treated not merely as a digital description of a building, but as a **computational state space** in which architectural geometry, relationships, constraints, uncertainty, and derived properties can be transformed and propagated systematically.
 
-> **BIM → Architectural State → Gaussian Representation → Transformation → Verified State**
+> **Design intent + evidence + criteria → belief → decision or next evidence → verified state**
 
 GAT is an experimental research engine. It is not intended to replace BIM authoring software, IFC, CAD, or architectural simulation systems. Its purpose is to investigate a computational layer that can operate **between BIM representations and downstream analysis, inference, simulation, and optimization.**
+
+## Current direction — decision-focused active BIM
+
+The project's north star is now explicit:
+
+> **Given design intent, uncertain physical evidence, and an engineering
+> criterion, maintain an auditable belief about the asset and determine
+> whether the criterion is resolved—or which permissible evidence should be
+> acquired next—before propagating and verifying any change.**
+
+Gaussians, splats, and active inference are mechanisms in service of that
+goal; none is the product by itself.  The flagship workflow is as-built MEP
+assurance: determine whether a proposed route clears the uncertain existing
+condition and, if the answer is unresolved, identify the next worthwhile
+scan or field measurement.  Hard invariants remain a separate verification
+shield, and no probabilistic assessment authorizes a physical intervention.
+
+The executable loop is:
+
+```text
+IFC design intent + physical evidence -> posterior architectural belief
+    -> SATISFIED / VIOLATED / UNRESOLVED
+    -> stop, or select worthwhile evidence
+    -> condition belief -> propagate consequences -> verify -> export
+```
 
 ---
 
 ## GAT v0 — the implemented engine
 
-The first engine exists and answers the §17 milestone question executably. Runtime dependency: **numpy only**. Tests: stdlib `unittest`.
+The first engine exists and answers the §17 milestone question executably. The
+core runtime depends on **numpy only**; OpenUSD support is an optional extra.
+Tests use stdlib `unittest`.
 
 ```bash
 pip install numpy
+pip install ".[openusd]"       # optional Pixar OpenUSD carrier
 python -m gat.demo            # the state-propagation milestone (README §17)
 python -m gat.demo.geometry   # the geometric Gaussian layer
+python -m gat.demo.active_inference  # choose, then assimilate, the next observation
+python -m gat.demo.portability       # resume the same belief in a new process
+python -m gat.demo.openusd_portability  # do the same through a composed USD stage
+python -m gat.demo.ledger_replay execution-ledger.json  # replay accepted + rejected history
+python -m gat.demo.temporal_process  # explicit process prediction -> evidence update -> replay
 python -m unittest discover   # the test suite
 ```
 
@@ -44,14 +81,19 @@ GAT v0 treats one object — **the evolving architectural state** — and implem
 
 | Layer | Question it answers | Concept | Module | v0 status |
 |---|---|---|---|---|
-| Boundary | What can enter/leave the system? | Markov blanket / adapter boundary | `gat/adapters/` | implemented (IFC in/out, JSON out) |
-| Inference | What state explains the information? | LLM / Bayesian hypothesis | first-class `Transformation` objects as the operation interface | interface only (deliberate) |
+| Boundary | What can enter/leave the system? | Explicit evidence/action adapters | `gat/adapters/`, `gat/geometry/scan_io.py`, `gat/geometry/scan_likelihood.py` | implemented (IFC, JSON, scan artifacts, calibrated clearance likelihood) |
+| Portability | Can computation resume across a runtime boundary? | Restartable state snapshot + operational equivalence | `gat/state_snapshot.py`, `gat/adapters/openusd.py` | implemented (JSON and OpenUSD carriers) |
+| History | Can the evolution be independently reproduced? | Closed, hash-chained accepted/rejected event ledger | `gat/ledger.py` | implemented (schema v1 + exact replay) |
+| Causality | What was assessed, selected, approved, or done without changing belief? | Typed state-bound causal events | `gat/causal.py` | implemented (closed records + lifecycles) |
+| Inference | What state explains the evidence? | Bayesian conditioning | `gat/gaussian/condition.py` | implemented (linearized observations) |
 | State | What do we currently believe? | Gaussian state μ, Σ | `gat/gaussian/` | implemented |
+| Decision | Is the stated criterion resolved? | Posterior decision confidence | `gat/engine/decision.py` | implemented (minimum scalar criterion) |
+| Policy | What evidence is worth acquiring next? | Decision-relevant information − burden | `gat/engine/active_inference.py` | implemented (one-step scalar observations) |
 | Configuration | Which states are the *same architecture*? | Moduli / configuration quotient | `gat/engine/configuration.py` | implemented (relabeling × rigid motion × re-encoding quotient) |
 | Transformation | How do we change configuration? | Operators / maps | `gat/engine/transform.py` | implemented |
 | Differential | How does a small perturbation propagate? | Jacobian | `gat/ir/exprs.py`, `gat/engine/sensitivity.py` | implemented (analytic, FD-witnessed) |
 | Probabilistic | How does uncertainty propagate? | Σ′ = JΣJᵀ, conditioning | `gat/engine/propagate.py`, `gat/gaussian/condition.py` | implemented (Joseph form, raw-space solves) |
-| Dynamical | What happens over repeated transformations? | State-space dynamics | `gat/engine/stability.py` | implemented (per-operator perturbation maps) |
+| Dynamical | How does belief evolve through time? | Calibrated linear-Gaussian process + stability | `gat/engine/dynamics.py`, `gat/engine/stability.py` | implemented (exact process transition + rollout) |
 | Stability | Do perturbations grow or contract? | Lyapunov analysis | `gat/engine/stability.py` | implemented (product spectrum + uncertainty energy) |
 | Verification | Is the resulting state valid? | Constraints / invariants | `gat/engine/verify.py` | implemented (mandatory, with rollback) |
 
@@ -74,6 +116,14 @@ Key semantics, fixed by design review:
 * **Interventions ≠ observations.** `SetParameter` is a do-intervention (severs correlations into the overridden variable); `ObserveQuantity` is Gaussian conditioning (sharpens belief *through* correlations). Both are first-class, inspectable, composable operators.
 * All solves run in **full-rank raw space** (batch Joseph form, Cholesky solves, no explicit inverses, no eigendecompositions in the execution path); the rank-deficient full joint is a read-only view.
 * **Verification is part of execution**: every transformation ends in the full invariant registry; strict failures roll back.
+* Every session owns an **authoritative execution ledger**. Accepted and rejected
+  transformations, exact prior/result state digests, caller evidence provenance,
+  complete invariant results, and rejection reasons are hash-chained and can be
+  independently replayed from the genesis checkpoint.
+* A **restartable state snapshot** preserves the closed IR and exact indexed
+  joint raw belief `(μ, Σ)`, then recompiles expressions, derived state,
+  Jacobians, and invariants in the receiving runtime. It is deliberately
+  stronger than the compact JSON projection used by dashboards and renderers.
 
 ### The geometric Gaussian layer
 
@@ -83,6 +133,10 @@ Key semantics, fixed by design review:
 * **Probabilistic clash detection** — separating-axis clearance with a delta-method sigma computed under the *joint* belief via the relative Jacobian `(J_a − J_b) Σ (J_a − J_b)ᵀ`, so shared parameters cancel (two walls driven by one storey height do not jitter relative to each other). Reported: `P(clash) = Φ(−c/σ)` (a probability of a real event), soft overlap mass, and a χ²₃ *separation significance* — deliberately not labeled a probability.
 * **Structural attention** — analytic scaled-dot-product weights over primitive tokens (content × Gaussian overlap kernel × relationship-graph affinity), a diffusion update obeying the maximum principle, semantic identity channels frozen. **No learned weights exist**, and the module says so: this is deterministic kernel message passing wearing the attention API. A content-blind Laplacian ablation ships alongside so the content-dependence is demonstrated, not asserted.
 * **Scan-to-BIM registration** — robust GMM alignment (uniform outlier component) with monotone EM (closed-form GLS translation + Armijo-guarded Gauss-Newton yaw), 8 deterministic starts, coarse-to-fine annealing; recovers a withheld pose to arcminutes/millimetres and reports the Gauss-Newton pose information matrix.
+* **External scan-artifact boundary** — `load_ply_points` and `ScanRegistrar.register_ply` accept standard ASCII or binary-little-endian PLY vertices, including a triangle mesh's vertices.  This allows an external reconstruction system to supply evidence without becoming a GAT runtime dependency.  The first integration target is `Geometry-Grounded-Gaussian-Splatting`'s post-processed `recon_post.ply` mesh artifact; its vertices enter GAT's existing registration fit gate unchanged.
+* **Evidence quarantine** — `ScanRegistrar.evidence` is available only after an accepted fit and binds its report to the exact scan SHA-256 and canonical scene version.  It conserves Gaussian-mixture responsibility mass while aggregating effective point support, normalized fit, primitive-support diversity, and cross-element assignment confidence.  These are auditable evidence diagnostics, not physical surface coverage and not an automatic BIM dimension update.
+* **As-built clearance assurance** — `assess_clearance` evaluates a proposed MEP box against every solid element under the joint BIM belief.  Because obstruction events can share uncertain parameters, it reports dependence-safe bounds `max(Pᵢ) ≤ P(any violation) ≤ min(1, ΣPᵢ)` rather than assuming independence.  An unresolved assessment can be paired with accepted scan evidence through `plan_clearance_evidence`, which recommends either extracting a calibrated element measurement or performing a targeted rescan; both paths leave canonical state unchanged.
+* **Calibrated scan-to-clearance likelihood** — `adapt_clearance_likelihood` measures the responsibility-weighted support face controlling the selected clearance, never an element centroid.  It requires survey-control or independently calibrated SLAM pose covariance, while scan-to-BIM registration remains only a fit/association gate.  Sampling, independent-pose, and systematic calibration variance are combined explicitly; provenance, element/face support, assignment, face alignment, spatial coverage, pose agreement, and innovation gates must all pass before a belief-bound `ObserveLinearized` can enter the usual condition → propagate → verify pipeline.
 * **Multi-scale fusion** — exact moment-matched level-of-detail merging (element → building) with KL merge error, and exact affine transport into geo-referenced frames.
 * **Compliance under uncertainty** — every rule is a margin with mean and sigma under the joint belief; `P(satisfied) = Φ(μ/σ)` with PASS/MARGINAL/FAIL.
 * **Differentiable layout** — cost/daylight/energy objectives with exact DAG gradients, chance-constraint penalties sharing the compliance margins, closed-form Gaussian ray transmittance with forward-mode dual-number gradient witnesses; results commit through ordinary verified interventions.
@@ -115,12 +169,279 @@ analyze(world, [obs, change])           # contracting / marginal / amplifying + 
 configuration_digest(world)             # identity modulo relabeling, rigid motion, re-encoding
 ```
 
+### Explicit temporal process dynamics
+
+`EvolveLinearGaussian` provides the first real state-space evolution primitive:
+selected raw variables follow `x′ = A x + b + w`, with calibrated
+`w ~ N(0,Q)` over a declared interval. The same embedded transition matrix
+transports every cross-covariance; process noise enters only the selected raw
+block; derived state is rebuilt and verified normally. `forecast_process`
+rolls forward without mutating a session, while `session.run(process)` is an
+explicit committed and replayable transition.
+
+```python
+from hashlib import sha256
+import numpy as np
+from gat import EvolveLinearGaussian, forecast_process
+
+process = EvolveLinearGaussian(
+    (clear_height,), np.array([[1.0]]), np.array([-0.0005]),
+    np.array([[0.0002**2]]), elapsed_seconds=86400.0,
+    model_id="daily-settlement-monitor-v1",
+    calibration_digest=sha256(calibration_bytes).hexdigest(),
+)
+seven_day = forecast_process(session.world, process, steps=7)  # immutable forecast
+session.run(process, provenance={"clock": "controller-A", "interval": "day-1"})
+```
+
+A subsequent measurement remains a distinct likelihood update, giving an
+inspectable `predict → observe → verify` loop rather than silently treating
+time as another observation. See
+[`docs/temporal-dynamics-v1.md`](docs/temporal-dynamics-v1.md) for covariance
+semantics, validation, and current limits.
+
+### Decision-focused evidence planning (FEP-style)
+
+GAT closes the loop around an explicit question.  A `MinimumDecision` is
+SATISFIED or VIOLATED only when the corresponding posterior conclusion meets
+the required confidence; otherwise it is UNRESOLVED.  Resolved decisions stop
+without collecting more data.  For an unresolved decision, scalar observation
+candidates are ranked by a one-step linear-Gaussian expected-free-energy proxy:
+pragmatic risk plus calibrated action cost, minus target-relevant mutual
+information.  Cost is declared in nats, so time, money, access, and safety
+burden must first be mapped onto that common prior-surprise scale.
+
+```python
+from gat import MinimumDecision, ObservationCandidate, plan_decision_evidence
+
+volume = session.var("Office-A", "Volume")
+decision = MinimumDecision(volume, minimum=60.0, confidence=0.95)
+plan = plan_decision_evidence(
+    session.world,
+    decision,
+    [
+        ObservationCandidate(
+            session.var("Level 1", "ClearHeight"), 0.01, cost_nats=0.05
+        ),
+        ObservationCandidate(volume, 0.05, cost_nats=0.10),
+    ],
+)
+if plan.selected is not None:
+    result = session.run(plan.selected.candidate.observe(60.2))
+```
+
+This is intentionally a restricted active-inference policy, not a claim to
+implement a general Free Energy Principle agent.  Passive observations do not
+alter the building, so their expected pragmatic risk is shared before the
+reading is known; they differ through epistemic value and declared burden.
+Forecast variances are first-order linearizations at the current belief.  A
+real reading alone enters the ordinary `ObserveQuantity → propagate → verify`
+path; selecting an action never mutates state.
+
+Registered scan artifacts already follow that separation.  An accepted pose
+can produce a per-element evidence report, while a rejected fit, a different
+scan, or a changed canonical scene is refused:
+
+```python
+from gat.geometry import ScanRegistrar, derive_scene, load_ply_points
+
+points = load_ply_points("recon_post.ply")
+registrar = ScanRegistrar(derive_scene(session.world))
+registration = registrar.register(points)
+evidence = registrar.evidence(points, registration)
+print(evidence.render())
+```
+
+This report exposes where the reconstruction supports the model and where
+assignment is ambiguous.  It deliberately stops before conditioning BIM
+dimensions: partially visible surfaces do not provide unbiased element-center
+measurements.
+
+The first flagship as-built decision composes that quarantined evidence with
+probabilistic MEP clearance:
+
+```python
+import numpy as np
+
+from gat.geometry import (
+    ClearanceDecision,
+    ClearanceLikelihoodCalibration,
+    IndependentPoseCalibration,
+    OrientedBox,
+    adapt_clearance_likelihood,
+    assess_clearance,
+    derive_scene,
+    plan_clearance_evidence,
+)
+
+route = OrientedBox((4.0, 1.8, 3.06), 0.0, (3.0, 0.4, 0.4))
+clearance = assess_clearance(
+    scene,
+    ClearanceDecision(
+        route, required_clearance=0.05, confidence=0.95, position_sigma=0.002
+    ),
+)
+inspection = plan_clearance_evidence(clearance, evidence)
+if inspection.selected is not None:
+    survey_pose = IndependentPoseCalibration(
+        transform=model_from_scan_survey_pose,
+        covariance=np.diag([yaw_var, x_var, y_var, z_var]),
+        scan_digest=registration.scan_digest,
+        source_id="survey-control-network-42",
+    )
+    likelihood = adapt_clearance_likelihood(
+        scene, registrar, points, registration, evidence, inspection,
+        survey_pose, ClearanceLikelihoodCalibration(),
+    )
+    session.run(likelihood.observation)  # condition -> propagate -> verify
+    resolved = assess_clearance(derive_scene(session.world), clearance.decision)
+```
+
+The adapter is deliberately stricter than registration.  A fitted BIM pose
+cannot be recycled as independent dimensional evidence; callers must declare
+an external pose source and its full yaw/translation covariance.  The emitted
+likelihood is bound to the scan digest, scene version, evidence configuration,
+pose source, exact prior belief, element, and support direction, so it cannot
+be reused after any intervening state change.  The triage priority remains an
+inspection heuristic, not a claimed expected information gain.
+
+### Authoritative execution history
+
+`GatSession.run` records every accepted transition and rejected attempt in a
+`gat-execution-ledger` v1 chain. The operation vocabulary is closed and
+JSON-safe; it includes calibrated `ObserveLinearized` evidence with its exact
+prior and evidence bindings. Each event contains its prior/result world
+digests, full verification record or rejection reason, optional caller
+provenance, predecessor hash, and event hash. Replay must regenerate the same
+commit or the same rejection and reconstruct the exact dense joint belief.
+
+```python
+from gat import read_ledger, replay_ledger
+
+checkpoint = session.world
+session.run(
+    likelihood.observation,
+    provenance={
+        "scan_digest": likelihood.scan_digest,
+        "pose_source": likelihood.pose_source_id,
+        "calibration": "clearance-likelihood-v1",
+    },
+)
+head = session.export_ledger("execution-ledger.json")
+replayed = replay_ledger(checkpoint, read_ledger("execution-ledger.json"))
+assert replayed.world.digest() == session.world.digest()
+```
+
+Hash chaining is tamper-evident relative to a trusted checkpoint or head; it
+does not by itself authenticate the publisher. See
+[`docs/execution-ledger-v1.md`](docs/execution-ledger-v1.md) for the schema,
+closed algebra, replay rules, and trust boundary.
+
+Assessments, policies, approvals, and field actions are recorded separately
+from transformations. Their ledger events are bound to the exact current world
+but must preserve its digest. Approval and external-action ids follow explicit
+lifecycles, while stale assessments and impossible transitions fail closed:
+
+```python
+from gat import decision_assessment_record, decision_policy_record
+
+assessment = assess_decision(session.world, decision)
+plan = plan_decision_evidence(session.world, decision, candidates)
+session.record_assessment(decision_assessment_record(assessment))
+session.record_policy(decision_policy_record(plan))
+assert session.world.digest() == assessment.world_digest  # no hidden mutation
+```
+
+Only a later acquired measurement conditions the belief. See
+[`docs/causal-events-v1.md`](docs/causal-events-v1.md) for typed records,
+lifecycle rules, and the authority/signature boundary.
+
+### Portable computational-state snapshots
+
+`GatSession.export_snapshot` writes `GatStateSnapshot v1`: a versioned,
+integrity-bound restart record containing entity and variable identities,
+topology, constraints, closed expression trees, provenance, exact raw-variable
+order, and the dense joint covariance. Derived values, dependency graphs,
+Jacobians, geometry views, and verification reports are not serialized; they
+are deterministically rebuilt and checked by the receiving runtime.
+
+```python
+from gat import GatSession, ShiftParameter, computational_equivalence
+
+before = session.world
+session.export_snapshot("checkpoint.gat.json")
+resumed = GatSession.load_snapshot("checkpoint.gat.json")
+
+assert computational_equivalence(before, resumed.world).passed
+resumed.run(ShiftParameter(resumed.var("Level 1", "ClearHeight"), 0.10))
+```
+
+`python -m gat.demo.portability` proves the stronger continuation condition in
+a separate Python process:
+
+```text
+T₂(decode(encode(T₁(S₀)))) == T₂(T₁(S₀))
+```
+
+The comparison covers IR semantics, raw and derived variable order, full mean
+and covariance, invariant results, and the weaker architectural configuration
+quotient. The first OpenUSD carrier now transports this contract and connects
+it to a scene graph, while GAT's IR and belief remain canonical executable
+state:
+
+```python
+session.export_openusd("checkpoint.usdc")
+resumed = GatSession.load_openusd("checkpoint.usdc")
+assert computational_equivalence(session.world, resumed.world).passed
+```
+
+Carrier v3 can authenticate the complete authoritative belief, trace, and
+execution-ledger head with an optional Ed25519 key:
+
+```python
+from gat import generate_openusd_keypair
+
+publisher = generate_openusd_keypair("survey-authority")
+session.export_openusd("signed.usdc", signing_key=publisher)
+trusted = GatSession.load_openusd(
+    "signed.usdc",
+    trusted_public_keys={publisher.key_id: publisher.public_key},
+    require_signature=True,
+)
+```
+
+The USD stage exposes entities, quantities, topology, raw-variable indexing,
+mean, and complete covariance as inspectable prims, relationships, and native
+arrays. `/GAT/State` is authoritative; `/GAT/View` is optional derived box
+geometry. USD references and namespace renames preserve state because GAT
+identity is carried by attributes and relationships rather than prim paths.
+Bounded read policies constrain composed prims, dense state data, and ledger
+events; `migrate_openusd` rewrites supported v1/v2 carriers into current v3 and refuses to
+strip or re-bless an unverified signature. Derived overrides and variants may
+compose freely, while authoritative opinions remain digest- and
+signature-checked.
+See [`docs/openusd-carrier-v0.md`](docs/openusd-carrier-v0.md) for the contract.
+
 ### Honesty notes
 
 * Covariance propagation is first-order (means are exact); the validity regime (mm-scale sigmas on m-scale dimensions) is stated where it matters.
 * Determinism is guaranteed as same-platform byte identity; cross-platform agreement is tolerance-level (BLAS reduction order).
 * The v0 IFC adapter reads dimensional quantities and placements, not solid-model geometry — an explicit adapter-boundary decision (§12), swappable without touching the engine.
 * Gaussian overlap is a proxy for boolean geometry; clash scores are calibrated probabilities of the *modeled* clearance event, and the void-blindness of Gaussianized walls (openings are not subtracted) is a known v0 limit.
+* The scan likelihood assumes the selected BIM support is locally a planar box face and freezes responsibility assignments for its first-order update. Edge/corner witnesses are rejected; richer mesh/plane latent variables and nonlinear posterior checks remain future work.
+* Snapshot v1 and its OpenUSD carrier require a compatible `gat-world-v1` runtime and a closed,
+  declarative expression algebra. It does not serialize arbitrary executable
+  code, derived caches, or the source IFC syntax tree. The OpenUSD adapter uses
+  custom `gat:` properties; a generated typed schema plugin, external key
+  management/revocation, and a cross-implementation conformance suite are not
+  implemented yet.
+* Ledger v1 has bounded parsing and detects edits, deletion, and reordering,
+  but an unsigned chain does not establish publisher identity. JSON snapshot
+  resume currently begins a new ledger genesis; OpenUSD carrier v3 preserves
+  and optionally signs exact ledger continuation.
+* Causal approval and external-action records enforce ordering and bind claims
+  to state, but names such as `authority` are not independent identity proofs.
+  A carrier signature authenticates its publisher, not every named participant.
 
 ---
 
@@ -594,6 +915,7 @@ Digital Twins
 ```
 
 These are potential integration targets, not initial implementation requirements.
+OpenUSD is now an implemented optional restart carrier and scene-graph bridge.
 
 ---
 
@@ -801,7 +1123,7 @@ The Gaussian representation is therefore one component of a larger computational
 
 **Research / Experimental — v0 implemented**
 
-GAT is an exploratory open-source project. The v0 engine (see *GAT v0 — the implemented engine* above) implements the §17 milestone end to end: the state-propagation core, the geometric Gaussian layer, the analysis layers (sensitivity, stability, configuration identity), and two self-asserting demonstrations with a full test suite.
+GAT is an exploratory open-source project. The v0 engine (see *GAT v0 — the implemented engine* above) implements the §17 milestone end to end: the state-propagation core, the geometric Gaussian layer, explicit temporal process dynamics, decision-focused active inference, calibrated scan evidence, a deterministic causal execution ledger, restartable computational state through JSON and OpenUSD, and self-asserting demonstrations backed by a full test suite.
 
 The architecture, mathematical assumptions, representations, and implementation are expected to evolve as they are tested against real BIM data and engineering workflows.
 
@@ -809,11 +1131,14 @@ The architecture, mathematical assumptions, representations, and implementation 
 
 GAT's adapter boundary (§12) is designed to meet the surrounding toolchain rather than replace it. Reference points and intended integration targets in and around the [notationsystems](https://github.com/notationsystems) organization:
 
-* [graphdeco-inria/gaussian-splatting](https://github.com/graphdeco-inria/gaussian-splatting) and [Geometry-Grounded-Gaussian-Splatting](https://github.com/notationsystems/Geometry-Grounded-Gaussian-Splatting) — GAT's geometric layer follows the 3DGS covariance factorization (`Σ = R·S·SᵀRᵀ`) and exports viewer-compatible splat PLYs.
+* [graphdeco-inria/gaussian-splatting](https://github.com/graphdeco-inria/gaussian-splatting) and [Geometry-Grounded-Gaussian-Splatting](https://github.com/notationsystems/Geometry-Grounded-Gaussian-Splatting) — GAT's geometric layer follows the 3DGS covariance factorization (`Σ = R·S·SᵀRᵀ`) and exports viewer-compatible splat PLYs.  Geometry-Grounded's `recon_post.ply` is also a clean external evidence input to `ScanRegistrar.register_ply`; GAT consumes the standard artifact and does not bundle its reconstruction runtime.
 * [arch-render-ai-toolkit](https://github.com/notationsystems/arch-render-ai-toolkit) — BIM-metadata-to-render-prompt middleware; GAT's canonical JSON state export (`GatSession.export_json`) is shaped for exactly this kind of consumer.
-* [OpenMEP](https://github.com/notationsystems/OpenMEP) — MEP components for Revit/Dynamo; MEP element classes (ducts, pipes, fittings) are the natural next entity family for the clash and propagation layers (the proposed-duct scoring in the geometry demo is that use case in miniature).
+* [OpenMEP](https://github.com/notationsystems/OpenMEP) — MEP components for Revit/Dynamo; its ducts, pipes, and fittings are the intended proposal source for GAT's now-executable as-built clearance decision and scan-guided inspection loop.
 * [bridge-pipeline](https://github.com/notationsystems/bridge-pipeline) — generative structural design with BIM compliance checking; a downstream candidate for GAT's verified-state and compliance reports.
 * [AI-CAD-BIM-Parametric-Assets](https://github.com/notationsystems/AI-CAD-BIM-Parametric-Assets) — parametric IFC/STEP datasets; a source of test models beyond the shipped demo.
+* [OpenUSD](https://openusd.org/) — GAT's first optional scene-graph carrier
+  for the restartable state contract and derived geometry. It is an
+  interoperability layer, not a replacement for the canonical runtime.
 
 No claim is made that Gaussian representations are universally optimal for BIM.
 
@@ -827,25 +1152,32 @@ The central proposition of GAT can be stated simply:
 
 $$
 \boxed{
-\text{BIM}
+\text{Design Intent} + \text{Physical Evidence} + \text{Criteria}
 \rightarrow
-\text{Architectural State}
+\text{Auditable Belief}
 \rightarrow
-\text{Gaussian Representation}
-\rightarrow
-\text{Transformation}
+\text{Decision or Next Evidence}
 \rightarrow
 \text{Verified State}
+\rightarrow
+\text{Restartable Continuation}
 }
 $$
 
 Or, in words:
 
-> **GAT investigates BIM as a computational state space and Gaussian representations as a mechanism for transforming, propagating, and reasoning over continuous architectural state.**
+> **GAT investigates how an IFC-grounded architectural belief can be kept
+> synchronized with uncertain physical evidence, used to resolve explicit
+> engineering decisions, and directed toward the next worthwhile observation
+> when the evidence is insufficient.**
 
 Stated as the layered research hypothesis the v0 engine now tests:
 
-> **GAT investigates an architectural state-space substrate in which heterogeneous observations are converted into probabilistic state hypotheses, architectural configurations are represented within a structured configuration space, transformations are propagated differentially and probabilistically, and repeated state evolution can be evaluated for stability and validity.**
+> **GAT investigates an architectural state-space substrate in which
+> heterogeneous observations update provenance-bound probabilistic state,
+> decision confidence supplies a stopping rule, evidence actions trade
+> epistemic value against burden, and every accepted transformation propagates
+> through mandatory validity checks.**
 
 None of this is assumed correct. The v0 implementation exists to discover **which of these layers genuinely compose, which require modification, and which turn out to be unnecessary** — that empirical question is the project.
 

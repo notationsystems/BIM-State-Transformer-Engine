@@ -54,3 +54,27 @@ class VerificationError(GatError):
 
 class RegistrationError(GatError):
     """Scan-to-BIM registration failed to converge or was ill-posed."""
+
+
+class LikelihoodCalibrationError(GatError):
+    """Scan evidence failed a provenance, quality, or calibration gate."""
+
+
+class SnapshotError(GatError):
+    """A computational-state snapshot is corrupt, incompatible, or invalid."""
+
+
+class OpenUsdError(GatError):
+    """An OpenUSD state carrier is unavailable, malformed, or incompatible."""
+
+
+class ScanArtifactError(GatError):
+    """An external scan or reconstructed-mesh artifact is unsupported or invalid."""
+
+
+class DecisionError(GatError):
+    """Decision evidence or provenance is inconsistent with the assessed state."""
+
+
+class LedgerError(GatError):
+    """An execution ledger is malformed, has been tampered with, or cannot replay."""

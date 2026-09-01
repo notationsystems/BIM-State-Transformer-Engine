@@ -25,9 +25,14 @@ import numpy as np
 
 from gat.engine.binding import GaussianBinding, bind
 from gat.engine.propagate import push_forward
-from gat.engine.transform import ObserveQuantity, CompositeTransformation, Transformation
+from gat.engine.transform import (
+    CompositeTransformation,
+    ObservationTransformation,
+    ObserveLinearized,
+    Transformation,
+)
 from gat.engine.verify import VerificationReport, run_invariants
-from gat.errors import NumericalError, VerificationError
+from gat.errors import BindingError, NumericalError, VerificationError
 from gat.gaussian.state import GaussianState
 from gat.ids import VarId
 from gat.ir.core import Module
@@ -63,7 +68,7 @@ class World:
 
 
 def _contains_observation(t: Transformation) -> bool:
-    if isinstance(t, ObserveQuantity):
+    if isinstance(t, ObservationTransformation):
         return True
     if isinstance(t, CompositeTransformation):
         return any(_contains_observation(s) for s in t.steps)
@@ -92,6 +97,7 @@ class ExecutionResult:
 
 def execute(world: World, t: Transformation, strict: bool = True) -> ExecutionResult:
     """Run one transformation under the mandatory propagate+verify contract."""
+    _assert_observation_provenance(world, t)
     new_belief = t.apply(world.binding, world.belief)
     candidate = world.with_belief(new_belief)
 
@@ -112,6 +118,19 @@ def execute(world: World, t: Transformation, strict: bool = True) -> ExecutionRe
         return ExecutionResult(world, report, False, t, targets, affected, deltas)
 
     return ExecutionResult(candidate, report, True, t, targets, affected, deltas)
+
+
+def _assert_observation_provenance(world: World, t: Transformation) -> None:
+    """Refuse adapter likelihoods calibrated against another exact world."""
+    if isinstance(t, ObserveLinearized):
+        if t.expected_world_digest != world.digest():
+            raise BindingError(
+                "linearized observation is stale: the architectural world "
+                "changed after calibration"
+            )
+    elif isinstance(t, CompositeTransformation):
+        for step in t.steps:
+            _assert_observation_provenance(world, step)
 
 
 def _assert_selectivity(

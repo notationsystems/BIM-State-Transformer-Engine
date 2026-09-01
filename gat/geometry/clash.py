@@ -46,6 +46,7 @@ class ClashItem:
     p_clash: float
     overlap_mass: float
     separation_sig: float
+    direction: tuple[float, float, float]
     witness: tuple[float, float, float]
 
     def render(self) -> str:
@@ -170,6 +171,9 @@ def score_pair(
         p_clash=p_clash,
         overlap_mass=overlap,
         separation_sig=sep_sig,
+        direction=(
+            float(direction[0]), float(direction[1]), float(direction[2])
+        ),
         witness=(float(witness[0]), float(witness[1]), float(witness[2])),
     )
 
@@ -206,13 +210,15 @@ def score_proposed_box(
     scene: GeometryScene,
     box,
     position_sigma: float = 0.0,
-    max_clearance: float = 0.5,
+    max_clearance: float | None = 0.5,
 ) -> ClashReport:
     """Score an ad-hoc proposed element (not in the state) against the scene.
 
     The proposed box is deterministic geometry plus optional isotropic
     placement uncertainty ``position_sigma`` — the classic coordination
-    question: *may this duct/beam/fixture go here?*
+    question: *may this duct/beam/fixture go here?*  Set ``max_clearance``
+    to ``None`` to disable broad-phase pruning when probability bounds must
+    account for every solid element.
     """
     from gat.geometry.gaussianize import gaussianize_box
     from gat.geometry.primitives import GaussianCloud, N_FEATURES
@@ -252,14 +258,18 @@ def score_proposed_box(
     )
     items = []
     considered = 0
-    lo_g, hi_g = ghost.aabb(margin=0.5 * max_clearance)
+    if max_clearance is not None and max_clearance < 0.0:
+        raise ValueError("max_clearance must be non-negative or None")
+    if max_clearance is not None:
+        lo_g, hi_g = ghost.aabb(margin=0.5 * max_clearance)
     for element in extended.elements[:-1]:
         if not element.is_solid:
             continue
         considered += 1
-        lo, hi = element.aabb(margin=0.5 * max_clearance)
-        if (lo > hi_g).any() or (lo_g > hi).any():
-            continue
+        if max_clearance is not None:
+            lo, hi = element.aabb(margin=0.5 * max_clearance)
+            if (lo > hi_g).any() or (lo_g > hi).any():
+                continue
         items.append(
             score_pair(extended, element, ghost, extra_var=position_sigma**2)
         )
