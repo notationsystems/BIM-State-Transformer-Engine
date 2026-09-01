@@ -12,7 +12,7 @@ use gat_sp1_beam_lib::{
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sp1_sdk::{
-    blocking::{Prover, ProverClient},
+    blocking::{ProveRequest, Prover, ProverClient},
     include_elf, Elf, HashableKey, ProvingKey, SP1Proof, SP1ProofWithPublicValues, SP1Stdin,
 };
 
