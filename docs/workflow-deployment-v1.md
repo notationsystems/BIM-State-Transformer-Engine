@@ -1,11 +1,12 @@
 # Construction workflow deployment contract v1
 
 This milestone turns GAT's mathematical assessments into a host-neutral
-workflow boundary for three initial use cases:
+workflow boundary for four initial use cases:
 
 1. as-built clearance acceptance;
-2. prefabrication and opening verification; and
-3. design-change / RFI impact review.
+2. prefabrication and opening verification;
+3. design-change / RFI impact review; and
+4. evidence-driven ANSI/AISC beam assurance.
 
 The deployment model is deliberately asymmetric:
 
@@ -116,19 +117,49 @@ that result as as-built acceptance.
 The other read-only operations are:
 
 - `summary`: state and invariant counts; and
+- `beam_assurance`: load an opt-in beam state and strict material certificate,
+  execute the validated ANSI/AISC 360-22 F2-1 chain in memory, and return the
+  prior/revised capacity distributions, verdict change, evidence identity,
+  transition/assessment ledger hashes, code/oracle identities, and explicit
+  non-authorization boundary; and
 - `change_impact`: `set_parameter`, `shift_parameter`, or `scale_parameter`
   previewed through the exact apply -> propagate -> verify pipeline.
 
 A failed change preview exposes the candidate impacts and invariant failures
 but leaves the authoritative world unchanged.
 
+A beam request is deliberately narrow:
+
+```json
+{
+  "format": "gat-headless-request-v1",
+  "request_id": "beam-b1-review",
+  "operation": "beam_assurance",
+  "state": {"kind": "ifc", "path": "beam_model.ifc"},
+  "payload": {
+    "case_id": "beam-b1-certificate",
+    "beam_name": "Beam-B1",
+    "factored_demand_n_m": 301000.0,
+    "confidence": 0.95,
+    "material_certificate_path": "material_certificate.json"
+  }
+}
+```
+
+The operation never edits the source IFC or certificate. It conditions an
+ephemeral session, records prior assessment -> evidence transition -> revised
+assessment in that session's ledger, and returns `may_authorize: false` because
+certificate signature, issuer trust, and independent verification of the
+beam's compact/continuously-braced scope are not established.
+
 ## Blender/Bonsai extension
 
 `integrations/blender/gat_assurance` is a self-contained Blender 4.2+
 extension. It requests local file access only. The sidebar loads an
-`acceptance` response, displays its disposition and next evidence request,
-and colors relevant objects. Objects are matched by their Blender name or a
-`gat_entity_name` custom property.
+`acceptance` or `beam_assurance` response. For beam results it displays the
+prior/revised capacity, validated method and independent oracle identity,
+verdict-change reason, and colors the matching beam. Objects are matched by
+their Blender name or a `gat_entity_name` custom property.
 
 The extension is deliberately read-only and does not depend on Bonsai. This
 lets it coexist with native IFC authoring while avoiding direct manipulation

@@ -21,7 +21,7 @@ bl_info = {
     "version": (0, 1, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > GAT",
-    "description": "Review evidence-bound BIM acceptance decisions",
+    "description": "Review evidence-bound BIM and beam assurance decisions",
     "category": "3D View",
 }
 
@@ -29,7 +29,7 @@ bl_info = {
 class GAT_OT_load_workflow_response(Operator):
     bl_idname = "gat.load_workflow_response"
     bl_label = "Load GAT Decision"
-    bl_description = "Load a read-only response produced by gat-headless"
+    bl_description = "Load a read-only workflow or beam response from gat-headless"
 
     def execute(self, context):
         scene = context.scene
@@ -51,6 +51,18 @@ class GAT_OT_load_workflow_response(Operator):
             )
         )
         scene.gat_world_digest = view.world_digest
+        scene.gat_method = str(getattr(view, "method", ""))
+        scene.gat_oracle = str(getattr(view, "oracle_id", ""))
+        prior_capacity = getattr(view, "prior_capacity_n_m", None)
+        revised_capacity = getattr(view, "revised_capacity_n_m", None)
+        scene.gat_capacity_change = (
+            ""
+            if prior_capacity is None or revised_capacity is None
+            else (
+                f"{prior_capacity / 1000.0:.1f} -> "
+                f"{revised_capacity / 1000.0:.1f} kN*m"
+            )
+        )
 
         targets = set(view.overlay_subjects)
         colored = 0
@@ -88,6 +100,12 @@ class GAT_PT_evidence_assurance(Panel):
             evidence = layout.box()
             evidence.label(text="Next evidence")
             evidence.label(text=scene.gat_next_evidence)
+        if scene.gat_method:
+            calculation = layout.box()
+            calculation.label(text="Validated beam calculation")
+            calculation.label(text=scene.gat_method)
+            calculation.label(text=f"Capacity: {scene.gat_capacity_change}")
+            calculation.label(text=f"Oracle: {scene.gat_oracle}")
         layout.label(text=f"Case: {scene.gat_case_id}")
         layout.label(text=f"State: {scene.gat_world_digest[:12]}…")
         layout.label(text="Read-only: no IFC state was changed")
@@ -106,6 +124,9 @@ _SCENE_PROPERTIES = {
     "gat_reason": StringProperty(name="Reason"),
     "gat_next_evidence": StringProperty(name="Next evidence"),
     "gat_world_digest": StringProperty(name="World digest"),
+    "gat_method": StringProperty(name="Engineering method"),
+    "gat_oracle": StringProperty(name="Validation oracle"),
+    "gat_capacity_change": StringProperty(name="Capacity change"),
 }
 
 

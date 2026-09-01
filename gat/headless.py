@@ -9,6 +9,8 @@ Supported v1 operations are read-only:
 
 * ``summary`` -- inspect a loaded authoritative state;
 * ``acceptance`` -- aggregate clearance, minimum, and difference checks;
+* ``beam_assurance`` -- condition a bounded ANSI/AISC beam check with one
+  strict material certificate and report the reproducible verdict change;
 * ``change_impact`` -- preview a design change through propagation and
   verification without committing it.
 """
@@ -25,6 +27,14 @@ from typing import Mapping, Sequence
 
 from gat.engine.decision import MinimumDecision, assess_decision
 from gat.engine.transform import ScaleParameter, SetParameter, ShiftParameter
+from gat.engineering import (
+    BeamBendingCheck,
+    BeamBendingEvaluator,
+    BeamCheckResult,
+    beam_assessment_record,
+    explain_beam_decision_change,
+    read_material_certificate,
+)
 from gat.errors import GatError
 from gat.geometry.assurance import ClearanceDecision, assess_clearance
 from gat.geometry.gaussianize import OrientedBox
@@ -70,6 +80,8 @@ def handle_request(
         result = _summary(session)
     elif operation == "acceptance":
         result = _acceptance(session, payload)
+    elif operation == "beam_assurance":
+        result = _beam_assurance(session, payload)
     elif operation == "change_impact":
         result = _change_impact(session, payload)
     else:
@@ -166,6 +178,155 @@ def _acceptance(session: GatSession, payload: Mapping[str, object]) -> dict[str,
         )
     policy = _acceptance_policy(payload.get("policy"))
     return evaluate_acceptance_case(case, receipts, policy=policy).to_dict()
+
+
+def _beam_assurance(
+    session: GatSession,
+    payload: Mapping[str, object],
+) -> dict[str, object]:
+    """Run the validated beam chain in memory without modifying source files."""
+    _fields(
+        payload,
+        {
+            "case_id",
+            "beam_name",
+            "factored_demand_n_m",
+            "confidence",
+            "material_certificate_path",
+        },
+        {"label"},
+    )
+    case_id = _string(payload["case_id"], "case_id")
+    beam_name = _string(payload["beam_name"], "beam_name")
+    beam = session.entity_by_name(beam_name)
+    if beam.ifc_class != "IfcBeam":
+        raise ValueError("beam_assurance subject must resolve to an IfcBeam")
+    check = BeamBendingCheck(
+        beam,
+        factored_demand_n_m=_number(
+            payload["factored_demand_n_m"],
+            "factored_demand_n_m",
+        ),
+        confidence=_number(payload["confidence"], "confidence"),
+        label=_optional_string(payload.get("label")),
+    )
+    evaluator = BeamBendingEvaluator()
+    prior_world = session.world
+    prior = evaluator.evaluate(prior_world, check)
+    session.record_assessment(
+        beam_assessment_record(prior_world, prior),
+        provenance={"phase": "headless-prior-beam-assessment"},
+    )
+    prior_assessment_event = session.ledger.events[-1]
+
+    certificate_evidence = read_material_certificate(
+        _string(payload["material_certificate_path"], "material_certificate_path")
+    ).to_evidence(session.world)
+    evidence = certificate_evidence.observation
+    if evidence.subject.entity != beam:
+        raise ValueError("material certificate subject differs from requested beam")
+    transition = session.run(
+        evidence.transformation(session.world),
+        provenance=certificate_evidence.provenance(),
+    )
+    transition_event = session.ledger.events[-1]
+    revised = evaluator.evaluate(
+        session.world,
+        check,
+        changed_inputs=transition.targets,
+        affected_variables=transition.affected,
+    )
+    change = explain_beam_decision_change(
+        prior_world,
+        session.world,
+        evidence,
+        transition,
+        prior,
+        revised,
+    )
+    session.record_assessment(
+        beam_assessment_record(
+            session.world,
+            revised,
+            evidence_digest=evidence.digest(),
+            change=change,
+        ),
+        provenance={"phase": "headless-revised-beam-assessment"},
+    )
+    revised_assessment_event = session.ledger.events[-1]
+    report = session.verify()
+    passed, warned, failed = report.counts()
+    certificate_record = certificate_evidence.certificate.provenance_record()
+    return {
+        "case_id": case_id,
+        "subject": beam_name,
+        "beam": {
+            "ifc_class": beam.ifc_class,
+            "global_id": beam.global_id,
+            "name": beam_name,
+        },
+        "disposition": revised.verdict.value,
+        "prior": _beam_result(prior),
+        "revised": _beam_result(revised),
+        "decision_change": {
+            "verdict_changed": change.verdict_changed,
+            "reason": change.reason,
+            "changed_beliefs": list(change.changed_beliefs),
+            "covariance_changes": list(change.covariance_changes),
+        },
+        "evidence": certificate_evidence.provenance(),
+        "transition": {
+            "prior_world_digest": prior_world.digest(),
+            "result_world_digest": transition.world.digest(),
+            "targets": [_variable_record(var) for var in transition.targets],
+            "affected": [_variable_record(var) for var in transition.affected],
+            "ledger_event_hash": transition_event.event_hash,
+            "ledger_head_hash": session.ledger.head,
+            "prior_assessment_event_hash": prior_assessment_event.event_hash,
+            "revised_assessment_event_hash": revised_assessment_event.event_hash,
+        },
+        "verification": {
+            "passed": report.passed,
+            "pass_count": passed,
+            "warning_count": warned,
+            "failure_count": failed,
+        },
+        "assurance": {
+            "design_code_profile_validated": True,
+            "scope_assertions_independently_verified": False,
+            "certificate_schema_validated": True,
+            "certificate_signature_verified": certificate_record["assurance"][
+                "signature_verified"
+            ],
+            "issuer_trust_verified": certificate_record["issuer"][
+                "trust_verified"
+            ],
+            "may_authorize": False,
+        },
+    }
+
+
+def _beam_result(result: BeamCheckResult) -> dict[str, object]:
+    assessment = result.assessment
+    return {
+        "world_digest": assessment.world_digest,
+        "target_mean_n_m": assessment.target_mean,
+        "target_sigma_n_m": assessment.target_sigma,
+        "p_satisfies": assessment.p_satisfies,
+        "p_violates": assessment.p_violates,
+        "verdict": result.verdict.value,
+        "computation": result.computation_details(),
+    }
+
+
+def _variable_record(var: VarId) -> dict[str, object]:
+    return {
+        "entity": {
+            "ifc_class": var.entity.ifc_class,
+            "global_id": var.entity.global_id,
+        },
+        "quantity": var.quantity,
+    }
 
 
 def _acceptance_check(session: GatSession, value: object):

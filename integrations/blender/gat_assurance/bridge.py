@@ -10,6 +10,9 @@ from typing import Mapping
 
 RESPONSE_FORMAT = "gat-headless-response-v1"
 ACCEPTANCE_DISPOSITIONS = frozenset({"ACCEPT", "REJECT", "REQUEST_EVIDENCE"})
+BEAM_DISPOSITIONS = frozenset({"SATISFIED", "VIOLATED", "UNRESOLVED"})
+BEAM_METHOD = "ansi-aisc-360-22-f2-1-lrfd-v1"
+BEAM_ORACLE_ID = "aisc-v16-example-f1-1b-lrfd-v1"
 
 
 @dataclass(frozen=True)
@@ -40,19 +43,53 @@ class WorkflowView:
         return f"{self.disposition}: {self.subject}"
 
 
-def load_response(path: str | Path) -> WorkflowView:
+@dataclass(frozen=True)
+class BeamAssuranceView:
+    request_id: str
+    world_digest: str
+    case_id: str
+    subject: str
+    disposition: str
+    reasons: tuple[str, ...]
+    overlay_subjects: tuple[str, ...]
+    prior_verdict: str
+    prior_capacity_n_m: float
+    revised_capacity_n_m: float
+    method: str
+    oracle_id: str
+    may_authorize: bool
+
+    @property
+    def requests(self) -> tuple[EvidenceRequestView, ...]:
+        return ()
+
+    @property
+    def color(self) -> tuple[float, float, float, float]:
+        return disposition_color(self.disposition)
+
+    @property
+    def headline(self) -> str:
+        return f"{self.disposition}: {self.subject}"
+
+
+def load_response(path: str | Path) -> WorkflowView | BeamAssuranceView:
     return parse_response(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
-def parse_response(value: object) -> WorkflowView:
+def parse_response(value: object) -> WorkflowView | BeamAssuranceView:
     response = _object(value, "response")
     required = {"format", "request_id", "operation", "world_digest", "result"}
     if set(response) != required:
         raise ValueError("response fields differ from gat-headless-response-v1")
     if response["format"] != RESPONSE_FORMAT:
         raise ValueError(f"unsupported response format {response['format']!r}")
-    if response["operation"] != "acceptance":
-        raise ValueError("Blender assurance view requires an acceptance response")
+    operation = response["operation"]
+    if operation == "beam_assurance":
+        return _parse_beam_assurance(response)
+    if operation != "acceptance":
+        raise ValueError(
+            "Blender assurance view requires an acceptance or beam_assurance response"
+        )
     result = _object(response["result"], "result")
     disposition = _string(result.get("disposition"), "disposition")
     if disposition not in ACCEPTANCE_DISPOSITIONS:
@@ -104,11 +141,93 @@ def parse_response(value: object) -> WorkflowView:
     )
 
 
+def _parse_beam_assurance(
+    response: Mapping[str, object],
+) -> BeamAssuranceView:
+    result = _object(response["result"], "result")
+    disposition = _string(result.get("disposition"), "disposition")
+    if disposition not in BEAM_DISPOSITIONS:
+        raise ValueError(f"unsupported beam disposition {disposition!r}")
+    prior = _object(result.get("prior"), "prior")
+    revised = _object(result.get("revised"), "revised")
+    change = _object(result.get("decision_change"), "decision_change")
+    computation = _object(revised.get("computation"), "revised.computation")
+    assurance = _object(result.get("assurance"), "assurance")
+    verification = _object(result.get("verification"), "verification")
+    transition = _object(result.get("transition"), "transition")
+    beam = _object(result.get("beam"), "beam")
+    subject = _string(result.get("subject"), "subject")
+    beam_name = _string(beam.get("name"), "beam.name")
+    if beam_name != subject:
+        raise ValueError("beam name and response subject differ")
+    if verification.get("passed") is not True:
+        raise ValueError("Blender refuses an unverified beam response")
+    may_authorize = assurance.get("may_authorize")
+    if may_authorize is not False:
+        raise ValueError("beam response must remain non-authorizing")
+    world_digest = _string(response["world_digest"], "world_digest")
+    prior_digest = _string(
+        transition.get("prior_world_digest"),
+        "transition.prior_world_digest",
+    )
+    result_digest = _string(
+        transition.get("result_world_digest"),
+        "transition.result_world_digest",
+    )
+    if result_digest != world_digest:
+        raise ValueError("beam response world identities differ")
+    if _string(prior.get("world_digest"), "prior.world_digest") != prior_digest:
+        raise ValueError("beam prior world identities differ")
+    if _string(revised.get("world_digest"), "revised.world_digest") != result_digest:
+        raise ValueError("beam revised world identities differ")
+    prior_verdict = _string(prior.get("verdict"), "prior.verdict")
+    revised_verdict = _string(revised.get("verdict"), "revised.verdict")
+    if prior_verdict not in BEAM_DISPOSITIONS or revised_verdict != disposition:
+        raise ValueError("beam verdict identities differ")
+    verdict_changed = change.get("verdict_changed")
+    if not isinstance(verdict_changed, bool) or verdict_changed != (
+        prior_verdict != revised_verdict
+    ):
+        raise ValueError("beam verdict-change claim is inconsistent")
+    method = _string(computation.get("method"), "computation.method")
+    oracle_id = _string(
+        computation.get("independent_oracle_id"),
+        "computation.independent_oracle_id",
+    )
+    if method != BEAM_METHOD or oracle_id != BEAM_ORACLE_ID:
+        raise ValueError("unsupported beam method or validation oracle")
+
+    return BeamAssuranceView(
+        request_id=_string(response["request_id"], "request_id"),
+        world_digest=world_digest,
+        case_id=_string(result.get("case_id"), "case_id"),
+        subject=subject,
+        disposition=disposition,
+        reasons=(_string(change.get("reason"), "decision_change.reason"),),
+        overlay_subjects=(subject,),
+        prior_verdict=prior_verdict,
+        prior_capacity_n_m=_number(
+            prior.get("target_mean_n_m"),
+            "prior.target_mean_n_m",
+        ),
+        revised_capacity_n_m=_number(
+            revised.get("target_mean_n_m"),
+            "revised.target_mean_n_m",
+        ),
+        method=method,
+        oracle_id=oracle_id,
+        may_authorize=False,
+    )
+
+
 def disposition_color(disposition: str) -> tuple[float, float, float, float]:
     colors = {
         "ACCEPT": (0.10, 0.70, 0.20, 1.0),
         "REJECT": (0.85, 0.08, 0.08, 1.0),
         "REQUEST_EVIDENCE": (0.95, 0.55, 0.05, 1.0),
+        "SATISFIED": (0.10, 0.70, 0.20, 1.0),
+        "VIOLATED": (0.85, 0.08, 0.08, 1.0),
+        "UNRESOLVED": (0.95, 0.55, 0.05, 1.0),
     }
     try:
         return colors[disposition]
@@ -128,8 +247,18 @@ def _string(value: object, label: str) -> str:
     return value
 
 
+def _number(value: object, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{label} must be numeric")
+    result = float(value)
+    if not float("-inf") < result < float("inf"):
+        raise ValueError(f"{label} must be finite")
+    return result
+
+
 __all__ = [
     "EvidenceRequestView",
+    "BeamAssuranceView",
     "WorkflowView",
     "disposition_color",
     "load_response",
