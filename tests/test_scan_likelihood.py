@@ -33,6 +33,14 @@ from gat.geometry.registration import (
     _scan_digest,
 )
 from gat.session import GatSession
+from gat.workflows import (
+    AcceptanceCase,
+    AcceptanceDisposition,
+    EvidenceReceipt,
+    WorkflowKind,
+    clearance_check,
+    evaluate_acceptance_case,
+)
 
 
 MODEL = os.path.join(os.path.dirname(gat.demo.__file__), "model.ifc")
@@ -228,6 +236,40 @@ class ScanLikelihoodTests(unittest.TestCase):
         self.assertTrue(
             np.array_equal(first.observation.row, second.observation.row)
         )
+
+    def test_verified_scan_transition_can_close_an_as_built_acceptance_case(self) -> None:
+        likelihood = self.likelihood()
+        session = GatSession(self.scene.world)
+        result = session.run(
+            likelihood.observation,
+            provenance={
+                "evidence_kind": "calibrated-scan-clearance-likelihood",
+                "calibration_id": likelihood.pose_source_id,
+                "scan_digest": likelihood.scan_digest,
+                "check_ids": ["route-clearance"],
+            },
+        )
+        receipt = EvidenceReceipt.from_scan_likelihood(
+            likelihood,
+            result,
+            session.ledger.events[-1],
+            ("route-clearance",),
+        )
+        posterior = assess_clearance(
+            derive_scene(session.world), self.assessment.decision
+        )
+        case = AcceptanceCase(
+            "as-built-route-1",
+            WorkflowKind.AS_BUILT_CLEARANCE,
+            "survey-conditioned route",
+            (clearance_check("route-clearance", posterior),),
+        )
+        outcome = evaluate_acceptance_case(case, (receipt,))
+
+        self.assertEqual(posterior.verdict, DecisionVerdict.SATISFIED)
+        self.assertEqual(outcome.disposition, AcceptanceDisposition.ACCEPT)
+        self.assertTrue(outcome.may_authorize)
+        self.assertEqual(outcome.evidence_receipt_ids, (receipt.receipt_id,))
 
 
 if __name__ == "__main__":

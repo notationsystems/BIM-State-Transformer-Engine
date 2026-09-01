@@ -13,6 +13,9 @@ from gat.causal import (
     AssessmentRecord,
     ExternalActionRecord,
     ExternalActionStatus,
+    acceptance_assessment_record,
+    acceptance_policy_record,
+    change_impact_assessment_record,
     decode_causal_record,
     decision_assessment_record,
     decision_policy_record,
@@ -24,6 +27,15 @@ from gat.engine.transform import ShiftParameter
 from gat.errors import LedgerError
 from gat.ledger import replay_ledger
 from gat.session import GatSession
+from gat.workflows import (
+    AcceptanceCase,
+    DifferenceDecision,
+    WorkflowKind,
+    assess_difference,
+    difference_check,
+    evaluate_acceptance_case,
+    preview_change,
+)
 
 
 MODEL = os.path.join(os.path.dirname(gat.demo.__file__), "model.ifc")
@@ -210,6 +222,53 @@ class CausalLedgerTests(unittest.TestCase):
                 "method-v1",
                 details={"score": float("nan")},
             )
+
+    def test_acceptance_case_and_evidence_policy_are_auditable_not_approvals(self) -> None:
+        fit = assess_difference(
+            self.session.world,
+            DifferenceDecision(
+                self.session.var("Opening-1", "Width"),
+                self.session.var("Door-1", "Width"),
+                minimum_margin=0.05,
+                label="opening width fit",
+            ),
+        )
+        case = AcceptanceCase(
+            "opening-fit-ledger",
+            WorkflowKind.OPENING_VERIFICATION,
+            "Door-1 into Opening-1",
+            (difference_check("width", fit),),
+        )
+        outcome = evaluate_acceptance_case(case)
+        digest = self.session.world.digest()
+        self.session.record_assessment(acceptance_assessment_record(outcome))
+        self.session.record_policy(acceptance_policy_record(outcome))
+
+        self.assertEqual(self.session.world.digest(), digest)
+        self.assertEqual(
+            [event.kind for event in self.session.ledger.events[-2:]],
+            ["assessment", "policy"],
+        )
+        self.assertFalse(
+            any(event.kind == "approval" for event in self.session.ledger.events)
+        )
+        replay = replay_ledger(self.initial, self.session.ledger)
+        self.assertEqual(replay.non_state, 2)
+        self.assertEqual(replay.world.digest(), digest)
+
+    def test_change_impact_preview_can_be_recorded_without_committing_candidate(self) -> None:
+        digest = self.session.world.digest()
+        report = preview_change(
+            self.session.world,
+            ShiftParameter(self.clear_height, 0.05),
+        )
+        self.session.record_assessment(change_impact_assessment_record(report))
+
+        self.assertEqual(self.session.world.digest(), digest)
+        self.assertNotEqual(report.candidate_world_digest, digest)
+        replay = replay_ledger(self.initial, self.session.ledger)
+        self.assertEqual(replay.non_state, 1)
+        self.assertEqual(replay.world.digest(), digest)
 
 
 if __name__ == "__main__":

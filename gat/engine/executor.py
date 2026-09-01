@@ -95,8 +95,31 @@ class ExecutionResult:
         )
 
 
-def execute(world: World, t: Transformation, strict: bool = True) -> ExecutionResult:
-    """Run one transformation under the mandatory propagate+verify contract."""
+@dataclass(frozen=True)
+class ExecutionPreview:
+    """Non-mutating candidate state produced by the execution pipeline.
+
+    A preview runs the same apply, propagation, selectivity, and invariant
+    checks as :func:`execute`, but exposes the candidate even when it fails
+    verification.  It never authorizes or commits the candidate.  This is the
+    evidence boundary used by design-change and RFI impact workflows.
+    """
+
+    prior_world_digest: str
+    candidate: World
+    report: VerificationReport
+    transformation: Transformation
+    targets: tuple[VarId, ...]
+    affected: tuple[VarId, ...] = field(default=())
+    deltas: tuple[tuple[VarId, float], ...] = field(default=())
+
+    @property
+    def admissible(self) -> bool:
+        return self.report.passed
+
+
+def preview(world: World, t: Transformation) -> ExecutionPreview:
+    """Evaluate a transformation without committing or hiding a failed state."""
     _assert_observation_provenance(world, t)
     new_belief = t.apply(world.binding, world.belief)
     candidate = world.with_belief(new_belief)
@@ -111,13 +134,43 @@ def execute(world: World, t: Transformation, strict: bool = True) -> ExecutionRe
 
     deltas = _mean_deltas(world, candidate)
     report = run_invariants(candidate)
+    return ExecutionPreview(
+        prior_world_digest=world.digest(),
+        candidate=candidate,
+        report=report,
+        transformation=t,
+        targets=targets,
+        affected=affected,
+        deltas=deltas,
+    )
 
-    if not report.passed:
+
+def execute(world: World, t: Transformation, strict: bool = True) -> ExecutionResult:
+    """Run one transformation under the mandatory propagate+verify contract."""
+    candidate = preview(world, t)
+
+    if not candidate.report.passed:
         if strict:
-            raise VerificationError(report)
-        return ExecutionResult(world, report, False, t, targets, affected, deltas)
+            raise VerificationError(candidate.report)
+        return ExecutionResult(
+            world,
+            candidate.report,
+            False,
+            t,
+            candidate.targets,
+            candidate.affected,
+            candidate.deltas,
+        )
 
-    return ExecutionResult(candidate, report, True, t, targets, affected, deltas)
+    return ExecutionResult(
+        candidate.candidate,
+        candidate.report,
+        True,
+        t,
+        candidate.targets,
+        candidate.affected,
+        candidate.deltas,
+    )
 
 
 def _assert_observation_provenance(world: World, t: Transformation) -> None:

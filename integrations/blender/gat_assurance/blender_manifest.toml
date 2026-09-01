@@ -1,0 +1,23 @@
+schema_version = "1.0.0"
+
+id = "gat_assurance"
+version = "0.1.0"
+name = "GAT Evidence and Assurance"
+tagline = "Review evidence-bound BIM acceptance decisions"
+maintainer = "Notation Systems"
+type = "add-on"
+
+website = "https://github.com/notationsystems/GAT-Gaussian-Architectural-Transformer-for-BIM"
+tags = ["3D View", "Import-Export", "Pipeline"]
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Load local GAT workflow response files"
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".*",
+  "*.zip",
+]

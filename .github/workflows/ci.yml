@@ -35,6 +35,9 @@ jobs:
       - name: Run the USD interchange demo (self-asserting)
         run: python -m gat.demo.usd ci-out
 
+      - name: Run the construction workflow demo (self-asserting)
+        run: python -m gat.demo.workflow
+
   test-extras:
     # The optional [openusd] stack: without this job the signed-carrier and
     # pxr tests only ever skip.  Also exercises the CLI and the demos the

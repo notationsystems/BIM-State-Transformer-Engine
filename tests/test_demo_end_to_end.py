@@ -59,5 +59,24 @@ class TestGeometryDemoSubprocess(unittest.TestCase):
             self.assertEqual(head, b"ply")
 
 
+class TestWorkflowDemoSubprocess(unittest.TestCase):
+    def test_acceptance_and_rfi_demo_runs(self):
+        proc = subprocess.run(
+            [sys.executable, "-m", "gat.demo.workflow"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(
+            proc.returncode,
+            0,
+            f"workflow demo failed:\nstdout:\n{proc.stdout[-3000:]}\n"
+            f"stderr:\n{proc.stderr[-3000:]}",
+        )
+        self.assertIn("REQUEST_EVIDENCE", proc.stdout)
+        self.assertIn("canonical state digest unchanged", proc.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
