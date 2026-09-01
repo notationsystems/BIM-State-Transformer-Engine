@@ -36,4 +36,4 @@ Repository = "https://github.com/notationsystems/BIM-State-Transformer"
 include = ["gat*"]
 
 [tool.setuptools.package-data]
-"gat.demo" = ["*.ifc", "material_certificate.json"]
+"gat.demo" = ["*.ifc", "material_certificate.json", "material_certificate_followup.json"]

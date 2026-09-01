@@ -138,10 +138,40 @@ the AISC check's required plastic `Zx` input.
 | `beam_assurance_summary.json` | Human- and tool-readable result/change summary |
 | `beam_sp1_request.json` | Proof-ready public commitments with an explicit unverified status |
 
+The optional `python -m gat.demo.beam_openusd_portability out/beam-usd`
+experiment adds these carrier artifacts:
+
+| File | Purpose |
+|---|---|
+| `beam_checkpoint_signed.usdc` | Signed posterior world plus the exact certificate transition and prior/revised assessment ledger |
+| `beam_continued_resumed.usdc` | State after a separate runtime authenticated the checkpoint and applied the follow-up certificate |
+| `beam_continued_uninterrupted.usdc` | Control execution used for exact world and ledger comparison |
+| `beam_openusd_resume_request.json` | Explicit public-key trust input and expected checkpoint identities for the receiving runtime |
+| `beam_openusd_resume_receipt.json` | Receiving-runtime authentication, reproduction, and continuation receipt |
+| `beam_openusd_portability_summary.json` | Machine-readable checkpoint and continuation equivalence result |
+
 The snapshot is the continuation artifact. IFC preserves source-backed
 marginals but is not a complete joint-covariance carrier. OpenUSD can carry
 the canonical snapshot and ledger, but OpenUSD does not define GAT's
 computational semantics; the core must remain operable without it.
+
+The signed carrier experiment proves the stronger beam-specific condition:
+
+```text
+authenticate(decode(USD(evidence -> state -> calculation -> verdict)))
+then apply(evidence_2)
+==
+uninterrupted apply(evidence_2)
+```
+
+Equality covers the reconstructed computational world and the complete causal
+ledger, including the original certificate source digest, transition event,
+assessment event, state identity, computation digest, and verdict. Diagnostic
+trace entries may differ across runtimes because resume/export events describe
+the process boundary; they are not substitutes for the authoritative ledger.
+The demo-generated public key in the resume request makes the trust decision
+reproducible, but it is not a production key-distribution mechanism. A deployed
+receiver must obtain allowed publisher keys from its own trust configuration.
 
 ## Proof boundary
 

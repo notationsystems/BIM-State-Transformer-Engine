@@ -17,6 +17,17 @@ can operate **between BIM representations and downstream analysis, inference,
 simulation, and optimization.** GAT remains the Gaussian belief/conditioning
 engine; OpenUSD remains an optional portable state carrier.
 
+The governing integration invariant is **one addressable computational state,
+multiple explicit representations**. IFC/OpenUSD views, scan or image
+reconstructions, solver models, and future generative geometry are not allowed
+to become competing copies of truth. External artifacts become observations
+only through a typed, calibrated measurement model; FEM, energy, fabrication,
+or grammar backends receive projections and must return results through the
+ordinary transformation and verification boundary. Designed, observed,
+inferred, generated, and predicted state must retain distinct identities. The
+current release proves only a bounded subset of this direction; it is not yet a
+general world model or multidisciplinary solver runtime.
+
 ## Current direction — decision-focused active BIM
 
 The project's north star is now explicit:
@@ -86,6 +97,7 @@ python -m gat.demo.geometry   # the geometric Gaussian layer
 python -m gat.demo.active_inference  # choose, then assimilate, the next observation
 python -m gat.demo.portability       # resume the same belief in a new process
 python -m gat.demo.openusd_portability  # do the same through a composed USD stage
+python -m gat.demo.beam_openusd_portability  # signed beam verdict + exact continuation
 python -m gat.demo.ledger_replay execution-ledger.json  # replay accepted + rejected history
 python -m gat.demo.temporal_process  # explicit process prediction -> evidence update -> replay
 python -m gat.demo.workflow          # opening acceptance + non-mutating RFI preview
@@ -596,6 +608,16 @@ trusted = GatSession.load_openusd(
     require_signature=True,
 )
 ```
+
+`python -m gat.demo.beam_openusd_portability` exercises the complete structural
+chain rather than a generic state update. It records the IFC beam prior, first
+material-certificate transition, AISC calculation, revised verdict, and causal
+assessment in a signed `.usdc`. A separate Python process verifies the carrier
+against an explicit publisher public key, reproduces the transported
+calculation, applies a follow-up certificate, and records the next verdict.
+The resumed and uninterrupted worlds and ledgers must match exactly. The
+carrier signature authenticates the publisher's GAT package; it does not make
+the embedded demo certificates trusted or the engineering result authorizing.
 
 The USD stage exposes entities, quantities, topology, raw-variable indexing,
 mean, and complete covariance as inspectable prims, relationships, and native
