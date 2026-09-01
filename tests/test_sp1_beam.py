@@ -13,6 +13,7 @@ from gat.demo.beam_assurance import run_beam_assurance
 from gat.ledger import read_ledger
 from gat.proof_manifest import computation_proof_public_values_digest
 from gat.sp1_beam import (
+    SP1_BEAM_CIRCUIT_VERSION,
     SP1_BEAM_NUMERIC_PROFILE_DIGEST,
     SP1_BEAM_PROOF_TYPE,
     SP1_BEAM_RECEIPT_FORMAT,
@@ -103,6 +104,11 @@ class Sp1BeamArithmeticTests(unittest.TestCase):
             self.assertEqual(read_sp1_beam_request(path), request)
             self.assertEqual(written, hashlib.sha256(path.read_bytes()).hexdigest())
             value = json.loads(path.read_text(encoding="utf-8"))
+            circuit_drift = copy.deepcopy(value)
+            circuit_drift["sp1_circuit_version"] = "v6.0.0"
+            path.write_text(json.dumps(circuit_drift), encoding="utf-8")
+            with self.assertRaisesRegex(ProofManifestError, "circuit version"):
+                read_sp1_beam_request(path)
             value["claim"]["output"]["verdict"] = "PASS"
             path.write_text(json.dumps(value), encoding="utf-8")
             with self.assertRaises(ProofManifestError):
@@ -113,6 +119,7 @@ class Sp1BeamArithmeticTests(unittest.TestCase):
             "format": SP1_BEAM_RECEIPT_FORMAT,
             "schema_version": 1,
             "sp1_version": SP1_BEAM_VERSION,
+            "sp1_circuit_version": SP1_BEAM_CIRCUIT_VERSION,
             "proof_type": SP1_BEAM_PROOF_TYPE,
             "program_digest": "66" * 32,
             "verifying_key_digest": "77" * 32,
@@ -129,6 +136,10 @@ class Sp1BeamArithmeticTests(unittest.TestCase):
         wrong_type["sp1_version"] = 640
         with self.assertRaises(ProofManifestError):
             Sp1BeamProofReceipt.from_dict(wrong_type)
+        wrong_circuit = copy.deepcopy(receipt)
+        wrong_circuit["sp1_circuit_version"] = "v6.0.0"
+        with self.assertRaisesRegex(ProofManifestError, "circuit version"):
+            Sp1BeamProofReceipt.from_dict(wrong_circuit)
         inconsistent = copy.deepcopy(receipt)
         inconsistent["public_statement_digest"] = "99" * 32
         with self.assertRaises(ProofManifestError):

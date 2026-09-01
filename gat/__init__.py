@@ -160,6 +160,7 @@ from gat.proof_manifest import (
     write_computation_proof_manifest,
 )
 from gat.sp1_beam import (
+    SP1_BEAM_CIRCUIT_VERSION,
     SP1_BEAM_MEDIA_TYPE,
     SP1_BEAM_METHOD,
     SP1_BEAM_NUMERIC_PROFILE,
@@ -404,6 +405,7 @@ __all__ = [
     "verification_digest",
     "verify_computation_proof_manifest",
     "write_computation_proof_manifest",
+    "SP1_BEAM_CIRCUIT_VERSION",
     "SP1_BEAM_MEDIA_TYPE",
     "SP1_BEAM_METHOD",
     "SP1_BEAM_NUMERIC_PROFILE",

@@ -39,7 +39,8 @@ SP1_BEAM_SCHEMA_VERSION = 1
 SP1_BEAM_METHOD = "ansi-aisc-360-22-f2-1-lrfd-checked-fixed-v1"
 SP1_BEAM_NUMERIC_PROFILE_ID = "beam-milli-mpa-mm3-milli-nmm-v1"
 SP1_BEAM_PROOF_SYSTEM = "sp1"
-SP1_BEAM_PROOF_TYPE = "core-v6.5.0"
+SP1_BEAM_CIRCUIT_VERSION = "v6.1.0"
+SP1_BEAM_PROOF_TYPE = "core-v6.1.0"
 SP1_BEAM_VERSION = "6.5.0"
 SP1_BEAM_MEDIA_TYPE = "application/vnd.succinct.sp1-proof"
 
@@ -416,6 +417,7 @@ class Sp1BeamRequest:
             "format": SP1_BEAM_REQUEST_FORMAT,
             "schema_version": SP1_BEAM_SCHEMA_VERSION,
             "sp1_version": SP1_BEAM_VERSION,
+            "sp1_circuit_version": SP1_BEAM_CIRCUIT_VERSION,
             "transition_event_seq": self.transition_event_seq,
             "public_statement_digest": self.public_statement_digest,
             "numeric_contract": self.numeric_contract.to_dict(),
@@ -430,6 +432,7 @@ class Sp1BeamRequest:
             "format",
             "schema_version",
             "sp1_version",
+            "sp1_circuit_version",
             "transition_event_seq",
             "public_statement_digest",
             "numeric_contract",
@@ -443,6 +446,8 @@ class Sp1BeamRequest:
             raise ProofManifestError("unsupported SP1 beam request schema")
         if record["sp1_version"] != SP1_BEAM_VERSION:
             raise ProofManifestError("SP1 beam request version is not pinned")
+        if record["sp1_circuit_version"] != SP1_BEAM_CIRCUIT_VERSION:
+            raise ProofManifestError("SP1 beam request circuit version is not pinned")
         request = cls(
             _integer(
                 record["transition_event_seq"],
@@ -575,6 +580,7 @@ def read_sp1_beam_request(path: str | Path) -> Sp1BeamRequest:
 @dataclass(frozen=True)
 class Sp1BeamProofReceipt:
     sp1_version: str
+    sp1_circuit_version: str
     proof_type: str
     program_digest: str
     verifying_key_digest: str
@@ -592,6 +598,7 @@ class Sp1BeamProofReceipt:
             "format",
             "schema_version",
             "sp1_version",
+            "sp1_circuit_version",
             "proof_type",
             "program_digest",
             "verifying_key_digest",
@@ -614,14 +621,22 @@ class Sp1BeamProofReceipt:
             cycles = _integer(cycles, "cycles", maximum=_U64_MAX)
         text_fields = (
             "sp1_version",
+            "sp1_circuit_version",
             "proof_type",
             "public_values_hex",
         )
         for name in text_fields:
             if not isinstance(record[name], str) or not record[name]:
                 raise ProofManifestError(f"{name} must be non-empty text")
+        if record["sp1_version"] != SP1_BEAM_VERSION:
+            raise ProofManifestError("SP1 beam receipt version is not pinned")
+        if record["sp1_circuit_version"] != SP1_BEAM_CIRCUIT_VERSION:
+            raise ProofManifestError("SP1 beam receipt circuit version is not pinned")
+        if record["proof_type"] != SP1_BEAM_PROOF_TYPE:
+            raise ProofManifestError("SP1 beam receipt proof type is not supported")
         receipt = cls(
             record["sp1_version"],
+            record["sp1_circuit_version"],
             record["proof_type"],
             _digest(record["program_digest"], "program_digest"),
             _digest(record["verifying_key_digest"], "verifying_key_digest"),
@@ -704,6 +719,7 @@ def sp1_beam_subprocess_verifier(
         return bool(
             receipt.proof_verified
             and receipt.sp1_version == SP1_BEAM_VERSION
+            and receipt.sp1_circuit_version == SP1_BEAM_CIRCUIT_VERSION
             and receipt.proof_type == SP1_BEAM_PROOF_TYPE
             and receipt.program_digest == manifest.proof.program_digest
             and receipt.verifying_key_digest == manifest.proof.verifying_key_digest
@@ -732,6 +748,7 @@ def _fields(record: Mapping[str, object], expected: set[str], label: str) -> Non
 
 
 __all__ = [
+    "SP1_BEAM_CIRCUIT_VERSION",
     "SP1_BEAM_MEDIA_TYPE",
     "SP1_BEAM_METHOD",
     "SP1_BEAM_NUMERIC_PROFILE",

@@ -121,7 +121,7 @@ manifest = create_computation_proof_manifest(
     computation_result_digest=engineering_result_digest,  # optional
     evidence_commitments=(certificate_digest, certificate_source_digest),
     proof_system="sp1",
-    proof_type="core-v6.5.0",
+    proof_type="core-v6.1.0",
     program_digest=guest_elf_digest,
     verifying_key_digest=verifying_key_digest,
     proof_artifact=proof_bytes,
@@ -153,7 +153,8 @@ and size policy.
 ## SP1 and confidentiality
 
 The schema remains backend-neutral. The repository now contains one pinned SP1
-v6.5.0 Rust guest and host for the bounded beam claim; the Python core still
+v6.5.0 Rust guest and host for the bounded beam claim (using SP1 circuit
+version `v6.1.0`); the Python core still
 does not bundle or silently install a zkVM. Proof generation is an explicit
 Linux/macOS deployment step, and GAT accepts a verified claim only through an
 explicit backend-verifier callback.

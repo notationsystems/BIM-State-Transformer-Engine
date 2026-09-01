@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 pub const SP1_VERSION: &str = "6.5.0";
-pub const PROOF_TYPE: &str = "core-v6.5.0";
+pub const SP1_CIRCUIT_VERSION: &str = "v6.1.0";
+pub const PROOF_TYPE: &str = "core-v6.1.0";
 pub const REQUEST_FORMAT: &str = "gat-sp1-beam-request-v1";
 pub const RECEIPT_FORMAT: &str = "gat-sp1-beam-proof-receipt-v1";
 pub const SCHEMA_VERSION: u64 = 1;

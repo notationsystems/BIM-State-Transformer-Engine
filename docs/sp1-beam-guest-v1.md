@@ -2,8 +2,9 @@
 
 ## Claim
 
-The first real GAT proof program is deliberately small. It proves that SP1
-v6.5.0 executed this checked fixed-point calculation for one ledger-bound
+The first real GAT proof program is deliberately small. It proves that the SP1
+v6.5.0 toolchain, with circuit compatibility version `v6.1.0`, executed this
+checked fixed-point calculation for one ledger-bound
 posterior beam slice:
 
 ```text
@@ -14,7 +15,9 @@ verdict              = PASS iff available >= factored_demand
 
 The request binds the input to the material-evidence digest and source digest,
 the engineering model and validation-profile digests, and the canonical public
-statement for the exact evidence transition and ledger head. The guest commits:
+statement for the exact evidence transition and ledger head. It records the
+toolchain release and circuit version separately so they cannot be conflated.
+The guest commits:
 
 ```text
 domain
