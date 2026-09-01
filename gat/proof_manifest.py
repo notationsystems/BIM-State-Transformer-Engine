@@ -410,6 +410,96 @@ class ComputationProofVerification:
 ProofVerifier = Callable[[ComputationProofManifest, bytes], bool]
 
 
+def computation_proof_public_values(
+    ledger: ExecutionLedger,
+    event_seq: int,
+    *,
+    numeric_contract: NumericContract,
+    model_contract_digest: str,
+    validation_profile_digest: str,
+    computation_result_digest: str | None = None,
+    evidence_commitments: tuple[str, ...] = (),
+) -> dict[str, object]:
+    """Prepare the exact public statement before an external proof exists.
+
+    Proof generation needs this statement digest as a guest public value, but
+    :func:`create_computation_proof_manifest` also needs the resulting proof
+    bytes.  This helper exposes the non-circular portion of the manifest and
+    deliberately applies the same validation and ordering rules as creation.
+    """
+    ledger.validate()
+    if isinstance(event_seq, bool) or not isinstance(event_seq, int):
+        raise ProofManifestError("event_seq must be an integer")
+    if event_seq < 1 or event_seq >= len(ledger.events):
+        raise ProofManifestError("event_seq does not identify a non-genesis ledger event")
+    event = ledger.events[event_seq]
+    if event.kind != "transition":
+        raise ProofManifestError("computation proofs may bind only accepted transitions")
+    if event.verification_digest is None:
+        raise ProofManifestError("accepted transition has no verification digest")
+    if not isinstance(numeric_contract, NumericContract):
+        raise ProofManifestError("numeric_contract must be a NumericContract")
+    result_digest = (
+        None
+        if computation_result_digest is None
+        else _require_digest(
+            computation_result_digest,
+            "computation_result_digest",
+        )
+    )
+    evidence = tuple(sorted(evidence_commitments))
+    if len(set(evidence)) != len(evidence):
+        raise ProofManifestError("evidence commitments must be unique")
+    for index, digest in enumerate(evidence):
+        _require_digest(digest, f"evidence_commitments[{index}]")
+    return {
+        "claim_scope": PROOF_CLAIM_SCOPE,
+        "runtime_contract": LEDGER_RUNTIME_CONTRACT,
+        "ledger_head": ledger.head,
+        "event_seq": event.seq,
+        "event_hash": event.event_hash,
+        "prior_world_digest": event.prior_world_digest,
+        "result_world_digest": event.result_world_digest,
+        "operation_digest": _digest_json(event.operation),
+        "verification_digest": event.verification_digest,
+        "computation_result_digest": result_digest,
+        "numeric_contract_digest": _digest_json(numeric_contract.to_dict()),
+        "model_contract_digest": _require_digest(
+            model_contract_digest,
+            "model_contract_digest",
+        ),
+        "validation_profile_digest": _require_digest(
+            validation_profile_digest,
+            "validation_profile_digest",
+        ),
+        "evidence_commitments": list(evidence),
+    }
+
+
+def computation_proof_public_values_digest(
+    ledger: ExecutionLedger,
+    event_seq: int,
+    *,
+    numeric_contract: NumericContract,
+    model_contract_digest: str,
+    validation_profile_digest: str,
+    computation_result_digest: str | None = None,
+    evidence_commitments: tuple[str, ...] = (),
+) -> str:
+    """Return the SHA-256 commitment an external guest must publish."""
+    return _digest_json(
+        computation_proof_public_values(
+            ledger,
+            event_seq,
+            numeric_contract=numeric_contract,
+            model_contract_digest=model_contract_digest,
+            validation_profile_digest=validation_profile_digest,
+            computation_result_digest=computation_result_digest,
+            evidence_commitments=evidence_commitments,
+        )
+    )
+
+
 def create_computation_proof_manifest(
     ledger: ExecutionLedger,
     event_seq: int,
@@ -432,20 +522,18 @@ def create_computation_proof_manifest(
     The caller must already have generated ``proof_artifact``.  GAT binds it
     to the ledger statement but does not infer that its proof system is valid.
     """
-    ledger.validate()
-    if isinstance(event_seq, bool) or not isinstance(event_seq, int):
-        raise ProofManifestError("event_seq must be an integer")
-    if event_seq < 1 or event_seq >= len(ledger.events):
-        raise ProofManifestError("event_seq does not identify a non-genesis ledger event")
-    event = ledger.events[event_seq]
-    if event.kind != "transition":
-        raise ProofManifestError("computation proofs may bind only accepted transitions")
-    if event.verification_digest is None:
-        raise ProofManifestError("accepted transition has no verification digest")
     artifact = _bytes(proof_artifact, "proof_artifact")
     evidence = tuple(sorted(evidence_commitments))
-    for index, digest in enumerate(evidence):
-        _require_digest(digest, f"evidence_commitments[{index}]")
+    public_values = computation_proof_public_values(
+        ledger,
+        event_seq,
+        numeric_contract=numeric_contract,
+        model_contract_digest=model_contract_digest,
+        validation_profile_digest=validation_profile_digest,
+        computation_result_digest=computation_result_digest,
+        evidence_commitments=evidence,
+    )
+    event = ledger.events[event_seq]
 
     provisional = ComputationProofManifest(
         ledger.head,
@@ -478,7 +566,7 @@ def create_computation_proof_manifest(
         ),
         "0" * 64,
     )
-    public_values_digest = _digest_json(provisional.public_values())
+    public_values_digest = _digest_json(public_values)
     proof = ProofArtifactCommitment(
         proof_system,
         proof_type,
@@ -799,6 +887,8 @@ __all__ = [
     "ProofCheck",
     "ProofCheckStatus",
     "ProofVerifier",
+    "computation_proof_public_values",
+    "computation_proof_public_values_digest",
     "create_computation_proof_manifest",
     "read_computation_proof_manifest",
     "verify_computation_proof_manifest",

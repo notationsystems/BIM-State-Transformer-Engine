@@ -13,3 +13,5 @@ htmlcov/
 .ruff_cache/
 *.swp
 .DS_Store
+sp1/beam/target/
+*.sp1-proof

@@ -1,0 +1,13 @@
+[package]
+name = "gat-sp1-beam-program"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "gat-sp1-beam-program"
+path = "src/main.rs"
+
+[dependencies]
+gat-sp1-beam-lib = { path = "../lib" }
+sp1-zkvm = { version = "=6.5.0" }

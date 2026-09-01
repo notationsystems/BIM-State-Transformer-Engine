@@ -89,10 +89,12 @@ inspectable summary:
 * integer and fixed-point arithmetic must use checked overflow;
 * binary64 arithmetic must reject non-finite results.
 
-The first recommended SP1 experiment is a micrometre-scaled clearance policy,
-not a dense Gaussian update or finite-element solve. A later fixed-point
-`Sigma' = J Sigma J^T` experiment should have separately reviewed scaling and
-quantization-error bounds.
+The first implemented SP1 experiment is the bounded AISC F2-1 beam yielding
+calculation in [`sp1-beam-guest-v1.md`](sp1-beam-guest-v1.md). It uses
+milli-MPa, mm3, and milli-N*mm checked integers and keeps the Gaussian update
+outside the proof boundary. A future fixed-point `Sigma' = J Sigma J^T`
+experiment would require separately reviewed scaling and quantization-error
+bounds.
 
 ## Creation and verification
 
@@ -108,18 +110,18 @@ manifest = create_computation_proof_manifest(
     ledger,
     transition_event_seq,
     numeric_contract=NumericContract(
-        "clearance-micrometre-v1",
+        "beam-milli-mpa-mm3-milli-nmm-v1",
         numeric_profile_digest,
-        "signed-fixed-point",
+        "checked-integer",
         "nearest-ties-to-even",
         "checked",
     ),
     model_contract_digest=model_contract_digest,
     validation_profile_digest=validation_profile_digest,
     computation_result_digest=engineering_result_digest,  # optional
-    evidence_commitments=(scan_digest, calibration_digest),
+    evidence_commitments=(certificate_digest, certificate_source_digest),
     proof_system="sp1",
-    proof_type="groth16",
+    proof_type="core-v6.1.0",
     program_digest=guest_elf_digest,
     verifying_key_digest=verifying_key_digest,
     proof_artifact=proof_bytes,
@@ -150,9 +152,12 @@ and size policy.
 
 ## SP1 and confidentiality
 
-The schema is backend-neutral, with SP1 as the first intended adapter. The
-core package does not compile a Rust guest, generate a proof, select a proving
-service, or verify SP1 internally.
+The schema remains backend-neutral. The repository now contains one pinned SP1
+v6.5.0 Rust guest and host for the bounded beam claim (using SP1 circuit
+version `v6.1.0`); the Python core still
+does not bundle or silently install a zkVM. Proof generation is an explicit
+Linux/macOS deployment step, and GAT accepts a verified claim only through an
+explicit backend-verifier callback.
 
 Deployments must enforce an allowed tuple of proof system, proof type, program
 digest, verifying-key digest, and numerical profile. They must also evaluate
@@ -167,5 +172,5 @@ authoritative state and bind its digest into the carrier signature. It should
 not embed large proofs by default, and it should commit to GAT's canonical
 semantic state rather than raw `.usdc` file bytes.
 
-That carrier change is deferred until a real backend verifier and fixed-point
-clearance guest have passed adversarial and performance testing.
+That carrier change remains deferred until the beam guest has passed
+adversarial and performance testing with retained proof artifacts.
