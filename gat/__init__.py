@@ -32,6 +32,7 @@ from gat.adapters.openusd import (
     write_openusd,
 )
 from gat.engine.executor import ExecutionPreview, ExecutionResult, World, execute, preview
+from gat.engine.propagate import PropagationStats
 from gat.engine.dynamics import (
     EvolveLinearGaussian,
     ProcessForecastStep,
@@ -255,6 +256,7 @@ __all__ = [
     "EquivalenceCheck",
     "ExecutionResult",
     "ExecutionPreview",
+    "PropagationStats",
     "ExecutionLedger",
     "EvidenceDisposition",
     "EvidenceKind",

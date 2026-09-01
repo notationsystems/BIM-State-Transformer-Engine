@@ -47,6 +47,9 @@ jobs:
       - name: Run the temporal predict-update demo (self-asserting)
         run: python -m gat.demo.temporal_process
 
+      - name: Run incremental propagation scale smoke probe
+        run: python -m gat.demo.incremental_scale --sizes 8 16 32 --repeats 1 --output ci-out/incremental-scale.json
+
       - name: Run the ledger replay demo (self-asserting)
         run: python -m gat.demo.ledger_replay ci-out/execution-ledger.json
 

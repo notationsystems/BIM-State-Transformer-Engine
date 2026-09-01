@@ -212,10 +212,17 @@ class GatSession:
         self.ledger.record_transition(before, result, provenance)
         stage = "observe" if "observe" in t.name else "transform"
         self.world = result.world
+        propagation_detail = ""
+        if result.propagation is not None:
+            propagation_detail = (
+                f"; {result.propagation.mode} propagation recomputed "
+                f"{result.propagation.derived_value_rows_recomputed} derived and "
+                f"{result.propagation.full_covariance_rows_recomputed} covariance rows"
+            )
         self.trace.add(
             stage,
             t.describe()[:44],
-            f"{len(result.affected)} derived affected",
+            f"{len(result.affected)} derived affected{propagation_detail}",
             _verdict(result.report),
             self.world.digest(),
         )
