@@ -24,6 +24,9 @@ dependencies = ["numpy>=1.24"]
 [project.optional-dependencies]
 openusd = ["usd-core>=26.8,<27", "cryptography>=40"]
 
+[project.scripts]
+gat = "gat.cli:main"
+
 [project.urls]
 Repository = "https://github.com/notationsystems/GAT-Gaussian-Architectural-Transformer-for-BIM"
 
