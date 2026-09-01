@@ -100,8 +100,9 @@ def scalar_ray_depth_dual(mu, cov, weight, origin, direction, length, kappa=1.0)
     """
     from gat.geometry import dual as D
 
-    inv = D.inv3(D.Dual.lift(cov)) if isinstance(cov, D.Dual) else np.linalg.inv(cov)
-    det = D.det3(D.Dual.lift(cov)) if isinstance(cov, D.Dual) else np.linalg.det(cov)
+    cov = D.Dual.lift(cov)  # uniform dual path; a plain ndarray gets zero eps
+    inv = D.inv3(cov)
+    det = D.det3(cov)
     delta = D.Dual.lift(origin) - D.Dual.lift(mu)
     d = D.Dual.lift(direction)
     a = (d @ (inv @ d)).sum()

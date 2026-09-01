@@ -18,6 +18,10 @@ import numpy as np
 class Dual:
     __slots__ = ("val", "eps")
 
+    #: Make numpy defer binary operations to Dual's reflected methods
+    #: (otherwise ``ndarray @ Dual`` is consumed by numpy's own matmul).
+    __array_priority__ = 1000
+
     def __init__(self, val, eps=None):
         self.val = np.asarray(val, dtype=np.float64)
         self.eps = (

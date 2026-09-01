@@ -89,6 +89,17 @@ def condition(
         raise ConditioningError(
             f"degenerate innovation covariance (redundant exact observations?): {exc}"
         ) from exc
+    if jitter > 0.0 and (noise == 0.0).any():
+        # With every noise variance positive, S is PD by construction and the
+        # ladder stays at rung zero; needing jitter while an exact (R=0)
+        # observation is present means the exact block is degenerate —
+        # redundant exact measurements must fail loudly, not be silently
+        # regularized into consistency.
+        exact = [k for k, r in enumerate(noise) if r == 0.0]
+        raise ConditioningError(
+            f"redundant exact observations (measurements {exact}): the joint "
+            f"innovation covariance is singular"
+        )
 
     innovation = observed - predicted
     # K = Sigma H^T S^{-1}  computed as  (S^{-1} (H Sigma))^T via Cholesky solves
