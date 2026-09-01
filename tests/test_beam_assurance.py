@@ -10,6 +10,8 @@ import unittest
 import gat.demo
 from gat.engine.transform import ObserveQuantity
 from gat.engineering import (
+    AISC360_22_F2_LRFD_ORACLE_ID,
+    AISC360_22_F2_LRFD_ORACLE_RECORD_DIGEST,
     BeamBendingCheck,
     BeamBendingEvaluator,
     beam_assessment_record,
@@ -48,14 +50,19 @@ class BeamLoweringTests(unittest.TestCase):
         beam = session.entity_by_name("Beam-B1")
         entity = session.world.module.entities[beam]
 
-        self.assertEqual(entity.attrs["structural_method"], "elastic-section-yield-v1")
+        self.assertEqual(
+            entity.attrs["structural_method"],
+            "ansi-aisc-360-22-f2-1-lrfd-v1",
+        )
         self.assertEqual(entity.attrs["resistance_factor"], 0.9)
+        self.assertEqual(entity.attrs["section_classification"], "compact")
+        self.assertEqual(entity.attrs["bracing"], "continuously-braced")
         self.assertEqual(
             set(entity.slots),
             {
                 "Length",
                 "YieldStrengthMPa",
-                "SectionModulusM3",
+                "PlasticSectionModulusMajorM3",
                 "NominalMomentCapacity",
                 "DesignMomentCapacity",
             },
@@ -82,9 +89,19 @@ class BeamLoweringTests(unittest.TestCase):
     def test_incomplete_opt_in_structural_contract_fails_closed(self) -> None:
         with open(BEAM_MODEL, "r", encoding="utf-8") as stream:
             text = stream.read()
-        text = text.replace("'SectionModulusM3Sigma'", "'UnknownSigma'")
-        with self.assertRaisesRegex(LoweringError, "SectionModulusM3"):
+        text = text.replace(
+            "'PlasticSectionModulusMajorM3Sigma'",
+            "'UnknownSigma'",
+        )
+        with self.assertRaisesRegex(LoweringError, "PlasticSectionModulusMajorM3"):
             GatSession.from_text(text, "incomplete-beam.ifc")
+
+    def test_incorrect_design_code_scope_fails_closed(self) -> None:
+        with open(BEAM_MODEL, "r", encoding="utf-8") as stream:
+            text = stream.read()
+        text = text.replace("'continuously-braced'", "'unbraced'")
+        with self.assertRaisesRegex(LoweringError, "GAT_StructuralScope"):
+            GatSession.from_text(text, "unbraced-beam.ifc")
 
 
 class CalibratedEvidenceTests(unittest.TestCase):
@@ -144,6 +161,15 @@ class BeamAssuranceChainTests(unittest.TestCase):
         self.assertEqual(prior.verdict.value, "SATISFIED")
         self.assertAlmostEqual(prior.assessment.target_mean, 315_000.0)
         self.assertGreaterEqual(prior.assessment.p_satisfies, 0.95)
+        computation = prior.computation_details()
+        self.assertEqual(
+            computation["independent_oracle_id"],
+            AISC360_22_F2_LRFD_ORACLE_ID,
+        )
+        self.assertEqual(
+            computation["independent_oracle_record_digest"],
+            AISC360_22_F2_LRFD_ORACLE_RECORD_DIGEST,
+        )
         self.session.record_assessment(
             beam_assessment_record(self.session.world, prior),
             provenance={"phase": "prior"},
@@ -343,7 +369,7 @@ class BeamAssuranceChainTests(unittest.TestCase):
         self.assertEqual(resumed_result.verdict, expected.verdict)
 
         # Another runtime can continue the exact Gaussian state.
-        section = self.session.var("Beam-B1", "SectionModulusM3")
+        section = self.session.var("Beam-B1", "PlasticSectionModulusMajorM3")
         follow_up = ObserveQuantity.single(section, 0.00099, 0.000002)
         self.session.run(follow_up)
         resumed.run(follow_up)

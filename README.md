@@ -456,8 +456,9 @@ IfcBeam -> canonical raw/derived state -> typed material certificate
   -> optional SP1 request (BACKEND_REQUIRED; no proof claimed)
 ```
 
-The shipped beam starts at `fy = 350 +/- 8 MPa`, section modulus
-`Z = 0.001 +/- 0.00001 m3`, and resistance factor `phi = 0.9`. Its design
+The shipped beam starts at `fy = 350 +/- 8 MPa`, plastic section modulus
+`Zx = 0.001 +/- 0.00001 m3`, and the ANSI/AISC 360-22 LRFD resistance
+factor `phi_b = 0.90`. Its design
 capacity is `315000 +/- 7858.9 N*m`, satisfying a `301000 N*m` demand at
 95% confidence. A `MEASURED` certificate reports `325 +/- 2 MPa`; Bayesian
 conditioning produces the posterior `326.471 +/- 1.940 MPa`, not a false
@@ -478,6 +479,14 @@ The material observation is read through a strict, versioned certificate
 contract that preserves issuer, batch, specimen, calibration, and exact source
 identity. The shipped certificate is a test fixture: signature, revocation,
 issuer trust, and professional decision authority are explicitly unverified.
+
+The calculation is the bounded `ansi-aisc-360-22-f2-1-lrfd-v1` profile:
+major-axis yielding of a compact, continuously braced, doubly symmetric
+W-shape using plastic `Zx`. It reproduces AISC V16.0 Companion Example F.1-1B
+(`421 kip-ft` nominal and `379 kip-ft` LRFD available strength), and every
+result binds that validation profile and oracle identity. Out-of-scope bracing,
+classification, axis, shape, or elastic-section inputs are rejected. See
+[`docs/aisc360-22-beam-validation-v1.md`](docs/aisc360-22-beam-validation-v1.md).
 
 ### Proof-carrying computation claims
 

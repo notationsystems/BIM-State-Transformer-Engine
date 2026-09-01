@@ -1,9 +1,10 @@
 """Identity-preserving probabilistic beam bending assurance.
 
-The deterministic model is intentionally small and inspectable:
+The deterministic model is the bounded ANSI/AISC 360-22 F2-1 LRFD yielding
+check validated in :mod:`gat.engineering.aisc360_22`:
 
-    nominal moment capacity = 1e6 * fy[MPa] * Z[m^3]
-    design moment capacity  = phi * nominal moment capacity
+    nominal moment capacity = 1e6 * fy[MPa] * Zx[m^3]
+    design moment capacity  = 0.90 * nominal moment capacity
 
 The Gaussian engine supplies the capacity distribution.  This module binds
 that result to one beam, model contract, dependency slice, decision criterion,
@@ -31,13 +32,20 @@ from gat.engine.decision import (
 )
 from gat.engine.executor import ExecutionResult, World
 from gat.evidence import CalibratedObservation
+from gat.engineering.aisc360_22 import (
+    AISC360_22_F2_LRFD_METHOD,
+    AISC360_22_F2_LRFD_ORACLE_ID,
+    AISC360_22_F2_LRFD_ORACLE_RECORD_DIGEST,
+    AISC360_22_F2_LRFD_VALIDATION_PROFILE,
+    AISC360_22_F2_LRFD_VALIDATION_PROFILE_DIGEST,
+)
 from gat.ids import EntityId, VarId
 from gat.ledger import verification_digest
 from gat.engine.verify import run_invariants
 
 
-BEAM_BENDING_METHOD = "elastic-section-yield-v1"
-BEAM_DECISION_METHOD = "minimum-gaussian-capacity-v1"
+BEAM_BENDING_METHOD = AISC360_22_F2_LRFD_METHOD
+BEAM_DECISION_METHOD = "minimum-gaussian-aisc360-22-capacity-v1"
 
 
 def _canonical_digest(value: object) -> str:
@@ -119,6 +127,13 @@ class BeamCheckResult:
             "method": BEAM_BENDING_METHOD,
             "model_contract_digest": self.model_contract_digest,
             "validation_profile_digest": self.validation_profile_digest,
+            "design_code_validation_profile_digest": (
+                AISC360_22_F2_LRFD_VALIDATION_PROFILE_DIGEST
+            ),
+            "independent_oracle_id": AISC360_22_F2_LRFD_ORACLE_ID,
+            "independent_oracle_record_digest": (
+                AISC360_22_F2_LRFD_ORACLE_RECORD_DIGEST
+            ),
             "dependency_digest": self.dependency_digest,
             "computation_digest": self.computation_digest,
             "dependency_variables": [_var_record(var) for var in self.dependency_vars],
@@ -176,12 +191,16 @@ class BeamBendingEvaluator:
             raise ValueError("beam does not carry the supported structural contract")
         required = {
             "YieldStrengthMPa",
-            "SectionModulusM3",
+            "PlasticSectionModulusMajorM3",
             "NominalMomentCapacity",
             "DesignMomentCapacity",
         }
         if not required.issubset(entity.slots):
             raise ValueError("beam structural state is incomplete")
+        expected_scope = AISC360_22_F2_LRFD_VALIDATION_PROFILE["required_scope"]
+        actual_scope = {key: entity.attrs.get(key) for key in expected_scope}
+        if actual_scope != expected_scope:
+            raise ValueError("beam is outside the validated AISC 360-22 F2 scope")
 
         model_contract = self.model_contract(world, check)
         validation_profile = {
@@ -190,6 +209,10 @@ class BeamBendingEvaluator:
             "confidence": check.confidence,
             "covariance": "first-order-jacobian-pushforward",
             "verdicts": ["SATISFIED", "VIOLATED", "UNRESOLVED"],
+            "design_code_validation_profile_digest": (
+                AISC360_22_F2_LRFD_VALIDATION_PROFILE_DIGEST
+            ),
+            "independent_oracle_id": AISC360_22_F2_LRFD_ORACLE_ID,
         }
         model_digest = _canonical_digest(model_contract)
         validation_digest = _canonical_digest(validation_profile)
@@ -252,12 +275,22 @@ class BeamBendingEvaluator:
                 "ifc_class": check.beam.ifc_class,
                 "global_id": check.beam.global_id,
             },
-            "expression": "phi * 1e6 * YieldStrengthMPa * SectionModulusM3",
+            "expression": (
+                "0.90 * 1e6 * YieldStrengthMPa * "
+                "PlasticSectionModulusMajorM3"
+            ),
             "resistance_factor": float(entity.attrs["resistance_factor"]),
+            "design_code_validation_profile_digest": (
+                AISC360_22_F2_LRFD_VALIDATION_PROFILE_DIGEST
+            ),
+            "scope": {
+                key: entity.attrs[key]
+                for key in AISC360_22_F2_LRFD_VALIDATION_PROFILE["required_scope"]
+            },
             "factored_demand_n_m": check.factored_demand_n_m,
             "units": {
                 "YieldStrengthMPa": "MPa",
-                "SectionModulusM3": "m3",
+                "PlasticSectionModulusMajorM3": "m3",
                 "DesignMomentCapacity": "N*m",
             },
         }

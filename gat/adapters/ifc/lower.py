@@ -16,8 +16,8 @@ DERIVED quantity layer plus the constraint set:
 * ``door.Area``            := Width * Height
 * ``space.FloorArea``      := Length * Width
 * ``space.Volume``         := FloorArea * storey.ClearHeight
-* ``beam.NominalMomentCapacity`` := fy * section modulus
-* ``beam.DesignMomentCapacity``  := resistance factor * nominal capacity
+* ``beam.NominalMomentCapacity`` := fy * plastic section modulus Zx
+* ``beam.DesignMomentCapacity``  := AISC 360-22 LRFD phi-b * nominal capacity
 * storey rollups           := Σ member quantities
 
 The shared ``ClearHeight`` raw variable is the coupling model: one design
@@ -46,6 +46,7 @@ from gat.adapters.ifc.reader import (
     properties_of,
     pset_value_refs,
     pset_values,
+    pset_text_values,
     quantities_of,
     refs,
     resolve_placement,
@@ -53,6 +54,11 @@ from gat.adapters.ifc.reader import (
 from gat.adapters.ifc.schema import ANNOTATED_PRODUCT_CLASSES, PRODUCT_CLASSES
 from gat.adapters.ifc.units import LengthUnitContext, length_unit_context
 from gat.errors import LoweringError
+from gat.engineering.aisc360_22 import (
+    AISC360_22_F2_LRFD_METHOD,
+    AISC360_22_F2_LRFD_VALIDATION_PROFILE,
+    AISC360_22_PHI_B,
+)
 from gat.ids import EntityId, VarId
 from gat.ir.core import (
     Entity,
@@ -178,6 +184,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         overrides.update(pset_values(file, defs, "GAT_Posterior"))
         material = pset_value_refs(file, defs, "GAT_Material")
         structural = pset_value_refs(file, defs, "GAT_Structural")
+        structural_scope = pset_text_values(file, defs, "GAT_StructuralScope")
 
         slots: dict[str, QtySlot] = {}
         entity_attrs: dict[str, str | int | float] = {}
@@ -212,7 +219,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
         if canonical == "IfcBeam":
             required = {
                 "YieldStrengthMPa": Unit.MPA,
-                "SectionModulusM3": Unit.M3,
+                "PlasticSectionModulusMajorM3": Unit.M3,
             }
             for qname, unit in required.items():
                 sigma_name = f"{qname}Sigma"
@@ -243,17 +250,24 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
                     source_ref=value_ref,
                 )
                 quantity_refs[var] = value_ref
-            if "ResistanceFactor" not in structural:
+            required_scope = {
+                "Method": AISC360_22_F2_LRFD_METHOD,
+                "ShapeFamily": "doubly-symmetric-w-shape",
+                "SectionClassification": "compact",
+                "Bracing": "continuously-braced",
+                "BendingAxis": "major",
+                "SectionProperty": "plastic-section-modulus-zx",
+            }
+            if structural_scope != required_scope:
                 raise LoweringError(
-                    f"{canonical} {eid.global_id} GAT_Structural lacks "
-                    "'ResistanceFactor'"
+                    f"{canonical} {eid.global_id} GAT_StructuralScope must exactly "
+                    f"match the implemented AISC profile; expected {required_scope}, "
+                    f"got {structural_scope}"
                 )
-            resistance_factor = float(structural["ResistanceFactor"][0])
-            if not math.isfinite(resistance_factor) or not 0.0 < resistance_factor <= 1.0:
-                raise LoweringError("beam ResistanceFactor must be in (0, 1]")
             entity_attrs = {
-                "structural_method": "elastic-section-yield-v1",
-                "resistance_factor": resistance_factor,
+                "structural_method": AISC360_22_F2_LRFD_METHOD,
+                "resistance_factor": AISC360_22_PHI_B,
+                **AISC360_22_F2_LRFD_VALIDATION_PROFILE["required_scope"],
             }
 
         if canonical == "IfcWall" and "UnitCost" in material:
@@ -453,7 +467,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
                 Const(1.0e6),
                 Mul(
                     VarRef(VarId(beam, "YieldStrengthMPa")),
-                    VarRef(VarId(beam, "SectionModulusM3")),
+                    VarRef(VarId(beam, "PlasticSectionModulusMajorM3")),
                 ),
             ),
         )
@@ -543,7 +557,7 @@ def lower_ifc(file: IfcFile, source: str = "<memory>") -> Module:
             Const(1.0e6),
             Mul(
                 VarRef(VarId(beam, "YieldStrengthMPa")),
-                VarRef(VarId(beam, "SectionModulusM3")),
+                VarRef(VarId(beam, "PlasticSectionModulusMajorM3")),
             ),
         )
         constraints.append(
