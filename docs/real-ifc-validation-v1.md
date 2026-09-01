@@ -2,7 +2,8 @@
 
 Status: implemented audit boundary, measured baseline, SI length-unit
 normalization, bounded beam geometry derivation, and strict material-certificate
-ingestion. The next phase is independent design-code validation.
+ingestion, and a bounded independently validated design-code calculation. The
+next phase is headless and Blender/Bonsai exposure of that validated chain.
 
 ## Why this exists
 
@@ -157,11 +158,15 @@ silently download external data.
    specimen/batch identity, calibration, units, and source digest.
 4. **Completed:** attach provenance to every derived quantity: source
    representation ids, algorithm version, unit scale, and uncertainty policy.
-5. **Next:** validate one versioned beam design-code calculation against an
-   independent oracle and bind its validation profile to the verdict.
-6. Then add storey-local ownership and support general rigid 3D placement
+5. **Completed (bounded v1):** validate ANSI/AISC 360-22 F2-1 LRFD yielding
+   against published AISC Example F.1-1B and bind the oracle/profile digest to
+   the beam computation. Elastic IFC-derived section moduli remain inadmissible
+   where the code check requires plastic `Zx`.
+6. **Next:** expose the validated chain through the headless CLI and
+   Blender/Bonsai.
+7. Then add storey-local ownership and support general rigid 3D placement
    composition; test both the clinic boundary and the 63 measured
    Schependomlaan failures.
-7. Only then admit a real-model structural decision scope into beam assurance.
+8. Only then admit a real-model structural decision scope into beam assurance.
 
 No tolerance mode should bypass these steps by silently dropping entities.

@@ -127,6 +127,33 @@ def pset_values(file: IfcFile, defs: list[RawInstance], pset_name: str) -> dict[
     return {k: v for k, (v, _) in pset_value_refs(file, defs, pset_name).items()}
 
 
+def pset_text_values(
+    file: IfcFile, defs: list[RawInstance], pset_name: str
+) -> dict[str, str]:
+    """Text single values of a named property set, without numeric coercion."""
+    out: dict[str, str] = {}
+    for definition in defs:
+        if definition.type_name != "IFCPROPERTYSET":
+            continue
+        if attr(definition, "Name") != pset_name:
+            continue
+        for pref in refs(attr(definition, "HasProperties")):
+            prop = file.deref(pref)
+            if prop.type_name != "IFCPROPERTYSINGLEVALUE":
+                continue
+            pname = attr(prop, "Name")
+            value = attr(prop, "NominalValue")
+            if isinstance(value, Typed) and len(value.args) == 1:
+                value = value.args[0]
+            if isinstance(pname, str) and isinstance(value, str) and value:
+                if pname in out:
+                    raise LoweringError(
+                        f"duplicate {pset_name}.{pname} text property"
+                    )
+                out[pname] = value
+    return out
+
+
 # -- placements ------------------------------------------------------------
 
 

@@ -1,0 +1,46 @@
+{
+  "format": "gat-engineering-oracle-v1",
+  "oracle_id": "aisc-v16-example-f1-1b-lrfd-v1",
+  "standard": {
+    "designation": "ANSI/AISC 360-22",
+    "chapter": "F",
+    "section": "F2",
+    "equation": "F2-1",
+    "design_basis": "LRFD"
+  },
+  "source": {
+    "publisher": "American Institute of Steel Construction",
+    "title": "V16.0 Companion, Vol. 1: Design Examples",
+    "example": "F.1-1B",
+    "printed_page": "F-8",
+    "pdf_page": 65,
+    "updated": "2024-07",
+    "landing_url": "https://www.aisc.org/university-programs/educators/teaching-aids/ta-steel-construction-manual-design-examples-v160/",
+    "download_url": "https://cloud.aisc.org/biggie_bin/first-semester-design-examples-v160_compressed.pdf",
+    "sha256": "f1994720c26fc3bb9fbc57f896ae3a93b8d573dd677d76ac283030103d4e6253",
+    "size_bytes": 4938816
+  },
+  "scope": {
+    "member": "ASTM A992/A992M W18x50",
+    "shape_family": "doubly-symmetric-w-shape",
+    "section_classification": "compact",
+    "bracing": "continuously-braced",
+    "bending_axis": "major",
+    "governing_limit_state": "yielding"
+  },
+  "published_inputs": {
+    "yield_strength_ksi": 50.0,
+    "plastic_section_modulus_major_in3": 101.0,
+    "factored_demand_kip_ft": 266.0,
+    "resistance_factor_phi_b": 0.9
+  },
+  "published_results": {
+    "nominal_moment_kip_ft": 421.0,
+    "available_moment_kip_ft": 379.0,
+    "verdict": "PASS"
+  },
+  "comparison": {
+    "rounding": "nearest whole kip-ft",
+    "absolute_tolerance_kip_ft": 0.5
+  }
+}

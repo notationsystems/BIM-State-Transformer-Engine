@@ -35,6 +35,7 @@ from gat.adapters.ifc.reader import (
     global_id,
     name_of,
     properties_of,
+    pset_text_values,
     pset_values,
     quantities_of,
     resolve_placement,
@@ -46,6 +47,10 @@ from gat.adapters.ifc.schema import (
 )
 from gat.adapters.ifc.units import SI_PREFIX_SCALE, assigned_unit_ids
 from gat.engine.executor import World
+from gat.engineering.aisc360_22 import (
+    AISC360_22_F2_LRFD_METHOD,
+    AISC360_22_F2_LRFD_VALIDATION_PROFILE,
+)
 from gat.engine.verify import run_invariants
 from gat.errors import GatError
 
@@ -442,9 +447,8 @@ def _audit_entity(
             structural_required = {
                 "YieldStrengthMPa",
                 "YieldStrengthMPaSigma",
-                "SectionModulusM3",
-                "SectionModulusM3Sigma",
-                "ResistanceFactor",
+                "PlasticSectionModulusMajorM3",
+                "PlasticSectionModulusMajorM3Sigma",
             }
             missing_structural = sorted(structural_required - set(structural))
             if missing_structural:
@@ -453,6 +457,40 @@ def _audit_entity(
                         "MISSING_STRUCTURAL_PROPERTY",
                         "ERROR",
                         "GAT_Structural lacks " + ", ".join(missing_structural),
+                        inst.step_id,
+                        inst.type_name,
+                    )
+                )
+            structural_scope = pset_text_values(
+                file,
+                definitions or [],
+                "GAT_StructuralScope",
+            )
+            expected_scope = {
+                "Method": AISC360_22_F2_LRFD_METHOD,
+                "ShapeFamily": AISC360_22_F2_LRFD_VALIDATION_PROFILE[
+                    "required_scope"
+                ]["shape_family"],
+                "SectionClassification": AISC360_22_F2_LRFD_VALIDATION_PROFILE[
+                    "required_scope"
+                ]["section_classification"],
+                "Bracing": AISC360_22_F2_LRFD_VALIDATION_PROFILE[
+                    "required_scope"
+                ]["bracing"],
+                "BendingAxis": AISC360_22_F2_LRFD_VALIDATION_PROFILE[
+                    "required_scope"
+                ]["bending_axis"],
+                "SectionProperty": AISC360_22_F2_LRFD_VALIDATION_PROFILE[
+                    "required_scope"
+                ]["section_property"],
+            }
+            if structural_scope != expected_scope:
+                issues.append(
+                    AuditIssue(
+                        "UNSUPPORTED_STRUCTURAL_SCOPE",
+                        "ERROR",
+                        "GAT_StructuralScope does not match the implemented "
+                        "AISC 360-22 F2 profile",
                         inst.step_id,
                         inst.type_name,
                     )

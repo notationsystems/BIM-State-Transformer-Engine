@@ -25,11 +25,11 @@ python -m gat.demo.beam_assurance out/beam
 | Stage | Authoritative identity or record |
 |---|---|
 | IFC beam | `IfcBeam:GATBEAMELEMENT00000100` / `Beam-B1` |
-| Raw state | `YieldStrengthMPa`, `SectionModulusM3`, and `Length` `VarId`s |
+| Raw state | `YieldStrengthMPa`, `PlasticSectionModulusMajorM3`, and `Length` `VarId`s |
 | Derived state | `NominalMomentCapacity` and `DesignMomentCapacity` `VarId`s |
 | Evidence | Strict `gat-material-certificate-observation-v1` ingestion produces a `CalibratedObservation` while preserving certificate, issuer, specimen, subject, likelihood, calibration, and source identities. |
 | State transition | `ObserveQuantity` in the closed ledger transformation algebra |
-| Engineering computation | `elastic-section-yield-v1` plus model, dependency, validation, and result digests |
+| Engineering computation | `ansi-aisc-360-22-f2-1-lrfd-v1` plus model, dependency, oracle-validation, and result digests |
 | Decision | Gaussian minimum-capacity assessment at a declared demand and confidence |
 | Verification | Mandatory invariant report plus a non-mutating, state-bound assessment event |
 | Transport | Posterior IFC, exact state snapshot, and hash-chained execution ledger |
@@ -42,12 +42,16 @@ public IFC scope does not silently expand. The contract contains:
 ```text
 YieldStrengthMPa
 YieldStrengthMPaSigma
-SectionModulusM3
-SectionModulusM3Sigma
-ResistanceFactor
+PlasticSectionModulusMajorM3
+PlasticSectionModulusMajorM3Sigma
 ```
 
-Missing or invalid fields fail closed.
+It also requires a separate `GAT_StructuralScope` assertion matching the
+implemented profile exactly: doubly symmetric W-shape, compact section,
+continuously braced, major-axis bending, and plastic section modulus `Zx`.
+The LRFD resistance factor is fixed by the implementation at `phi_b = 0.90`;
+it is not an editable IFC input. Missing, invalid, or out-of-scope fields fail
+closed.
 
 The certificate reader rejects unknown and duplicate JSON fields, unsupported
 property/unit pairs, non-finite values, non-positive uncertainty, and subject
@@ -61,8 +65,8 @@ not make the issuer trusted or the resulting decision professionally approved.
 The reference calculation is deliberately inspectable:
 
 ```text
-nominal moment capacity = 1e6 * fy[MPa] * Z[m3]
-design moment capacity  = phi * nominal moment capacity
+nominal moment capacity = 1e6 * fy[MPa] * Zx[m3]
+design moment capacity  = 0.90 * nominal moment capacity
 decision                = P(design capacity >= demand) at confidence c
 ```
 
@@ -108,13 +112,21 @@ subject are rejected before conditioning. An LLM may propose or extract a
 claim, but it cannot bypass this calibrated evidence boundary or perform the
 engineering calculation.
 
+The calculation is validated against AISC's published V16.0 Companion Example
+F.1-1B for ANSI/AISC 360-22 Equation F2-1. The pinned oracle reproduces the
+published `421 kip-ft` nominal and `379 kip-ft` LRFD available strength for a
+compact, continuously braced W18x50. The validation profile and oracle identity
+are committed into every beam computation record. See
+[`aisc360-22-beam-validation-v1.md`](aisc360-22-beam-validation-v1.md).
+
 The public IFC geometry provider is likewise non-authorizing. It derives beam
 axis length from `Curve2D` polylines and area plus centroidal elastic section
 moduli from `IfcExtrudedAreaSolid` arbitrary closed composite profiles. Every
 quantity records source IFC digest, STEP representation ids, unit scale,
 algorithm version, arc-discretization policy, and a numerical discretization
 error. Unsupported bodies remain explicit partial results rather than guessed
-properties.
+properties. Its section moduli are elastic values and therefore cannot supply
+the AISC check's required plastic `Zx` input.
 
 ## Emitted artifacts
 
@@ -145,8 +157,10 @@ and real backend verification. Digest binding alone must continue to report
 This is not a code-complete structural design check. The shipped certificate
 is schema-realistic but is not a field-issued or independently authenticated
 document. The public clinic IFC contains no certificate that authorizes a
-structural decision. The calculation does not model load
-combinations, section classification, local or lateral-torsional buckling,
+structural decision. The implemented design-code scope relies on an explicit
+compact/continuously-braced classification; it does not derive or independently
+verify that classification from geometry. The calculation does not model load
+combinations, local or lateral-torsional buckling,
 shear, deflection, connections, fire, fatigue, code resistance rules, model
 form error, or professional approval. First-order Gaussian propagation may be
 unsuitable for strongly nonlinear or non-Gaussian cases.
