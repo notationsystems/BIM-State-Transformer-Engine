@@ -7,6 +7,7 @@
     gat splats  model.ifc out/                   splat PLYs (+ --variations N)
     gat sample  model.ifc [--n 500]              realization / violation rates
     gat report  response.json [--html]           render a gat-headless decision
+    gat ledger  ledger.json [--html]             render an execution-ledger timeline
 
 Every command is deterministic and never mutates the model.  ``--json``
 (where offered) switches to machine-readable output.
@@ -15,6 +16,8 @@ Exit codes are per-command contracts: ``audit`` returns 0 when the model is
 pipeline-ready, 2 when unsupported content blocks ingestion, and 3 on I/O
 errors; ``report`` returns 0 for a rendered decision, 1 when the response
 is a rendered headless error, 2 for invalid input, and 3 on I/O errors;
+``ledger`` returns 0 for a rendered timeline, 2 for an invalid or
+tampered chain, and 3 on I/O errors;
 the state commands return 0 clean, 1 findings (a likely clash, a failed
 verification), and 2 on usage or input errors.
 
@@ -44,7 +47,7 @@ from gat.geometry.stateio import derive_scene
 from gat.geometry.variations import export_variations, variation_spread
 from gat.ids import VarId
 from gat.ifc_audit import audit_ifc_file
-from gat.report import decode_response, render_html, render_text
+from gat.report import decode_ledger, decode_response, render_html, render_text
 from gat.session import GatSession
 
 
@@ -82,6 +85,17 @@ def _run_report(args: argparse.Namespace) -> int:
         sys.stderr.write(f"gat report: {exc}\n")
         return 3
     return 1 if report.operation == "error" else 0
+
+
+def _run_ledger(args: argparse.Namespace) -> int:
+    try:
+        report = decode_ledger(args.ledger)
+        rendered = render_html(report) if args.html else render_text(report) + "\n"
+        _write_report(rendered, args.output)
+    except OSError as exc:
+        sys.stderr.write(f"gat ledger: {exc}\n")
+        return 3
+    return 0
 
 
 # -- state commands ---------------------------------------------------------
@@ -362,6 +376,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="emit a self-contained, script-free HTML report",
     )
     p.set_defaults(handler=_run_report)
+
+    p = commands.add_parser(
+        "ledger",
+        help="render a hash-chained execution ledger as a human timeline",
+    )
+    p.add_argument("ledger", help="execution ledger JSON path")
+    p.add_argument("-o", "--output", help="write the rendering to this path")
+    p.add_argument(
+        "--html",
+        action="store_true",
+        help="emit a self-contained, script-free HTML timeline",
+    )
+    p.set_defaults(handler=_run_ledger)
 
     return parser
 

@@ -125,10 +125,12 @@ def _yes_no(value: bool) -> str:
 
 @dataclass(frozen=True)
 class Card:
-    """A titled block of label/value rows."""
+    """A titled block of label/value rows; ``accent`` optionally carries one
+    vocabulary term so GUI surfaces can reinforce it with colour."""
 
     title: str
     fields: tuple[tuple[str, str], ...]
+    accent: str = ""
 
 
 @dataclass(frozen=True)
@@ -167,6 +169,119 @@ class DecisionReport:
 
 
 # -- strict decoding --------------------------------------------------------
+
+
+def decode_ledger(path: str) -> DecisionReport:
+    """Read a hash-chained execution ledger and normalize it as a timeline.
+
+    ``read_ledger`` validates the complete chain before anything renders, so
+    a tampered or broken ledger is refused with its reason, never drawn.
+    """
+    from gat.ledger import read_ledger
+
+    return ledger_report(read_ledger(path), source=path)
+
+
+def ledger_report(ledger, source: str) -> DecisionReport:
+    """Render-ready timeline of an already-validated ExecutionLedger."""
+    from gat.ledger import LEDGER_FORMAT, LEDGER_SCHEMA_VERSION
+
+    events = list(ledger.events)
+    latest = next(
+        (event for event in reversed(events) if event.verification is not None),
+        None,
+    )
+    passed = bool(latest.verification.get("passed")) if latest else True
+
+    blocks: list[Card | Table] = []
+    shown = events
+    elided = 0
+    if len(events) > 50:
+        shown = events[:5] + events[-45:]
+        elided = len(events) - 50
+    for position, event in enumerate(shown):
+        if elided and position == 5:
+            blocks.append(
+                Card("elided", ((f"{elided} events", "not shown"),))
+            )
+        blocks.append(_event_card(event))
+    blocks.append(
+        Card(
+            "chain",
+            (
+                ("format", f"{LEDGER_FORMAT} v{LEDGER_SCHEMA_VERSION}"),
+                ("events", str(len(events))),
+                ("head", ledger.head),
+                ("integrity", "hash chain verified"),
+            ),
+        )
+    )
+    name = source.replace("\\", "/").rsplit("/", 1)[-1]
+    return DecisionReport(
+        operation="ledger",
+        request_id="",
+        world_digest=ledger.head,
+        disposition="PASS" if passed else "FAIL",
+        subject=name,
+        subline=f"execution ledger timeline, {len(events)} events, chain verified",
+        notes=(),
+        blocks=tuple(blocks),
+        footers=(NON_AUTHORIZING_FOOTER, READ_ONLY_FOOTER),
+    )
+
+
+_ACCENT_KEYS = frozenset({"verdict", "disposition", "status", "decision"})
+
+
+def _event_card(event) -> Card:
+    operation = event.operation
+    title = f"{event.seq} - {event.kind}"
+    op_name = operation.get("op")
+    if isinstance(op_name, str):
+        title = f"{event.seq} - {event.kind}: {op_name}"
+
+    accent = "FAIL" if event.kind == "rejection" else ""
+    fields: list[tuple[str, str]] = []
+    if event.error_type:
+        message = f"{event.error_type}: {event.error_message}".rstrip(": ")
+        fields.append(("error", message))
+    scalars = _scalar_fields(
+        {key: value for key, value in operation.items() if key != "record_type"}
+    )
+    for label, value in scalars:
+        if (
+            not accent
+            and label.rsplit(".", 1)[-1] in _ACCENT_KEYS
+            and value in SIGNAL_CLASSES
+        ):
+            accent = value
+    fields.extend(scalars)
+    fields.extend(
+        (f"provenance.{label}", value)
+        for label, value in _scalar_fields(event.provenance)
+    )
+    if event.prior_world_digest == event.result_world_digest:
+        fields.append(("world", event.result_world_digest))
+    else:
+        fields.append(("prior world", event.prior_world_digest))
+        fields.append(("result world", event.result_world_digest))
+    verification = event.verification
+    if verification is not None:
+        statuses = [
+            result.get("status")
+            for result in verification.get("results", [])
+            if isinstance(result, Mapping)
+        ]
+        fields.append(
+            (
+                "verification",
+                f"{statuses.count('PASS')} pass / {statuses.count('WARN')} warn"
+                f" / {statuses.count('FAIL')} fail",
+            )
+        )
+        if verification.get("passed") is not True:
+            accent = "FAIL"
+    return Card(title, tuple(fields), accent=accent)
 
 
 def decode_response(value: object) -> DecisionReport:
@@ -696,6 +811,10 @@ p.note { background: #fff; border-left: 4px solid #c9c6bf;
   padding: 0.6rem 0.9rem; border-radius: 0 8px 8px 0; }
 section { background: #fff; border-radius: 10px; padding: 0.9rem 1.2rem;
   margin-top: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+section.proceed { border-left: 4px solid #1ab233; }
+section.stop { border-left: 4px solid #d91414; }
+section.attention { border-left: 4px solid #f28c0d; }
+section.undecided { border-left: 4px solid #595959; }
 section h2 { margin: 0 0 0.5rem; font-size: 0.8rem; text-transform: uppercase;
   letter-spacing: 0.08em; color: #6b6a66; }
 dl { margin: 0; display: grid; grid-template-columns: max-content 1fr;
@@ -738,7 +857,16 @@ def render_html(report: DecisionReport) -> str:
     for note in report.notes:
         parts.append(f'<p class="note">{esc(note)}</p>')
     for block in report.blocks:
-        parts.append(f"<section><h2>{esc(block.title)}</h2>")
+        accent = block.accent if isinstance(block, Card) else ""
+        signal = SIGNAL_CLASSES.get(accent, "") if accent else ""
+        badge = (
+            f' <span class="badge" style="background:'
+            f'{disposition_hex(accent)}">{esc(accent)}</span>'
+            if accent
+            else ""
+        )
+        opening = f'<section class="{signal}">' if signal else "<section>"
+        parts.append(f"{opening}<h2>{esc(block.title)}{badge}</h2>")
         if isinstance(block, Card):
             parts.append("<dl>")
             for label, value in block.fields:
@@ -835,6 +963,7 @@ __all__ = [
     "SIGNAL_CLASSES",
     "SIGNAL_COLORS",
     "Table",
+    "decode_ledger",
     "decode_response",
     "disposition_color",
     "disposition_hex",
@@ -842,6 +971,7 @@ __all__ = [
     "format_moment",
     "format_number",
     "format_probability",
+    "ledger_report",
     "render_html",
     "render_text",
 ]

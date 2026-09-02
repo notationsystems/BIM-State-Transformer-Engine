@@ -83,6 +83,24 @@ Every rendering of a headless response has the same skeleton, in order:
 Long tables truncate at 20 rows in the terminal with an explicit
 `(and N more ...)` note — never silently.
 
+## Ledger timelines
+
+The execution ledger is the system's flight recorder; `gat ledger` renders
+it as a timeline in the same grammar. Each event becomes one card titled
+`seq - kind` (plus the operation name for transitions), carrying the
+event's scalar content, its provenance, its world digests, and its
+verification counts. Cards are accented by the vocabulary the event itself
+recorded — an assessment's `verdict`, a policy's `disposition`, a failed
+verification — via the standard palette, and a rejection event is accented
+`stop`. The chain card at the end shows format, event count, head hash,
+and integrity.
+
+Two fail-closed rules are specific to ledgers: a tampered or broken hash
+chain is refused with its reason, never drawn (`read_ledger` validates the
+complete chain before rendering begins); and timelines longer than 50
+events elide the middle explicitly — first 5, a marked gap, last 45 —
+never silently.
+
 ## Surfaces
 
 * `gat report response.json` — terminal rendering of any of the four
@@ -92,6 +110,9 @@ Long tables truncate at 20 rows in the terminal with an explicit
 * `gat report response.json --html -o report.html` — the same content as a
   self-contained, script-free HTML page for sharing and archiving, e.g.
   `gat-headless request.json | gat report - --html -o decision.html`.
+* `gat ledger ledger.json [--html] [-o PATH]` — the execution-ledger
+  timeline described above. Exit codes: 0 rendered timeline, 2 invalid or
+  tampered chain, 3 I/O error.
 * Blender panel — loads the same response files; colours Bonsai objects by
   signal class; never mutates IFC state.
 

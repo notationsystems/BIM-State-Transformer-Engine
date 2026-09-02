@@ -275,6 +275,72 @@ class ErrorRenderingTests(unittest.TestCase):
         self.assertIn(report.READ_ONLY_FOOTER, text)
 
 
+class LedgerTimelineTests(unittest.TestCase):
+    def build_ledger(self, tmp: str) -> str:
+        from gat.causal import AssessmentRecord
+        from gat.engine.transform import ShiftParameter
+        from gat.session import GatSession
+
+        session = GatSession.load_ifc(MODEL)
+        session.run(
+            ShiftParameter(session.var("Wall-Party", "Length"), 0.1),
+            provenance={"phase": "test-shift"},
+        )
+        session.record_assessment(
+            AssessmentRecord(
+                world_digest=session.world.digest(),
+                assessment_id="fit-1",
+                assessment_type="test-assessment",
+                subject="Wall-Party",
+                verdict="VIOLATED",
+                method="test-method-v1",
+            ),
+            provenance={"phase": "test-assessment"},
+        )
+        path = os.path.join(tmp, "ledger.json")
+        session.export_ledger(path)
+        return path
+
+    def test_timeline_renders_chain_events_and_accents(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            decoded = report.decode_ledger(self.build_ledger(tmp))
+            self.assertEqual(decoded.operation, "ledger")
+            self.assertEqual(decoded.disposition, "PASS")
+            text = report.render_text(decoded)
+            self.assertIn("0 - genesis", text)
+            self.assertIn("1 - transition: shift_parameter", text)
+            self.assertIn("2 - assessment", text)
+            self.assertIn("hash chain verified", text)
+            self.assertIn(report.READ_ONLY_FOOTER, text)
+            html = report.render_html(decoded)
+            self.assertNotIn("<script", html)
+            self.assertIn('class="stop"', html)
+            self.assertIn("VIOLATED", html)
+
+    def test_tampered_chain_is_refused_not_drawn(self) -> None:
+        from gat.errors import LedgerError
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.build_ledger(tmp)
+            with open(path, encoding="utf-8") as handle:
+                document = json.load(handle)
+            document["events"][1]["operation"]["delta"] = 0.5
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(document, handle)
+            with self.assertRaises(LedgerError):
+                report.decode_ledger(path)
+            self.assertEqual(cli_main(["ledger", path]), 2)
+
+    def test_cli_renders_timeline_and_exits_zero(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.build_ledger(tmp)
+            self.assertEqual(cli_main(["ledger", path, "-o", os.devnull]), 0)
+            out = os.path.join(tmp, "timeline.html")
+            self.assertEqual(cli_main(["ledger", path, "--html", "-o", out]), 0)
+            with open(out, encoding="utf-8") as handle:
+                self.assertTrue(handle.read().startswith("<!doctype html>"))
+
+
 class CliReportTests(unittest.TestCase):
     def run_cli(self, *argv: str) -> int:
         return cli_main(list(argv))
