@@ -24,10 +24,14 @@ palette source). A lockstep test keeps the two palettes bit-identical.
    nothing.
 4. **Red is a decision, not a malfunction.** A refused or failed request is
    grey (`ERROR`), so red keeps meaning "the engine decided: stop".
-5. **Reports are inert artifacts.** HTML reports are self-contained,
-   carry no scripts and fetch nothing; interactivity is native disclosure
-   (`<details>`) only. A decision report may be attached to an RFI or
-   archived without changing meaning or behaviour.
+5. **Reports are inert artifacts; instruments are self-contained.** Human
+   surfaces come in two classes. *Reports* (decision pages, timelines,
+   audits) carry no scripts and fetch nothing; interactivity is native
+   disclosure (`<details>`) only, so a report attached to an RFI or
+   archived cannot change meaning or behaviour. *Instruments* (the 3D
+   viewer) may carry their own inline scripts but obey the same isolation:
+   one file, no network access, no external resources, and they render
+   state without ever mutating it.
 6. **Every report says what it is not.** Each rendering ends with the
    read-only footer, and states either that it does not authorize any
    action or (for `ACCEPT`) that it is a recommendation still requiring
@@ -123,6 +127,14 @@ never silently.
   conditioning evidence (certificate, issuer with trust status, observed
   value) and the assurance flags verbatim — `issuer_trust_verified no`
   stays visible, exactly as in the HTML report.
+* `gat view model.ifc -o viewer.html [--variations N]` — the offline 3D
+  instrument: the nominal belief plus `N` belief-sampled as-built
+  realizations, each splat drawn as its k-sigma ellipsoid (slider from
+  0.5 to 3 sigma), orbit/zoom/pan, per-class visibility, and one chip per
+  realization whose dot carries the signal palette for its invariant
+  verdict. Element hues are identity colours (muted architectural
+  neutrals), never signal colours; the geometry on screen *is* the
+  uncertainty, so no synthetic "error bars" are drawn.
 
 ## Non-goals
 

@@ -8,6 +8,7 @@
     gat sample  model.ifc [--n 500]              realization / violation rates
     gat report  response.json [--html]           render a gat-headless decision
     gat ledger  ledger.json [--html]             render an execution-ledger timeline
+    gat view    model.ifc -o viewer.html         offline 3D viewer of belief + samples
 
 Every command is deterministic and never mutates the model.  ``--json``
 (where offered) switches to machine-readable output.
@@ -90,6 +91,22 @@ def _run_report(args: argparse.Namespace) -> int:
         sys.stderr.write(f"gat report: {exc}\n")
         return 3
     return 1 if report.operation == "error" else 0
+
+
+def _run_view(args: argparse.Namespace) -> int:
+    from gat.geometry.viewer import export_viewer_html
+
+    session = _load(args.model)
+    count = export_viewer_html(
+        session.world,
+        args.output,
+        n=args.variations,
+        seed=args.seed,
+        spacing=args.spacing,
+        model_name=args.model,
+    )
+    print(f"wrote {args.output}: offline viewer with {count} realizations")
+    return 0
 
 
 def _run_ledger(args: argparse.Namespace) -> int:
@@ -399,6 +416,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="emit a self-contained, script-free HTML timeline",
     )
     p.set_defaults(handler=_run_ledger)
+
+    p = commands.add_parser(
+        "view",
+        help="self-contained offline 3D viewer of the belief and its samples",
+    )
+    p.add_argument("model")
+    p.add_argument("-o", "--output", required=True, help="viewer HTML path")
+    p.add_argument("--variations", type=int, default=8)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--spacing", type=float, default=0.75)
+    p.set_defaults(handler=_run_view)
 
     return parser
 
