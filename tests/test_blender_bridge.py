@@ -97,6 +97,34 @@ class BlenderBridgeTests(unittest.TestCase):
         self.assertFalse(view.may_authorize)
         self.assertEqual(view.color, (0.85, 0.08, 0.08, 1.0))
 
+    def test_beam_view_carries_evidence_and_honest_assurance_flags(self) -> None:
+        response = handle_request(
+            {
+                "format": REQUEST_FORMAT,
+                "request_id": "blender-beam-case",
+                "operation": "beam_assurance",
+                "state": {"kind": "ifc", "path": BEAM_MODEL},
+                "payload": {
+                    "case_id": "beam-b1-certificate",
+                    "beam_name": "Beam-B1",
+                    "factored_demand_n_m": 301_000.0,
+                    "confidence": 0.95,
+                    "material_certificate_path": MATERIAL_CERTIFICATE,
+                },
+            }
+        )
+        view = bridge.parse_response(response)
+
+        flags = dict(view.assurance_flags)
+        self.assertEqual(flags["issuer_trust_verified"], "no")
+        self.assertEqual(flags["certificate_signature_verified"], "no")
+        self.assertEqual(flags["design_code_profile_validated"], "yes")
+        self.assertEqual(flags["may_authorize"], "no")
+        self.assertEqual(len(view.evidence_lines), 3)
+        self.assertIn("MAT-CERT-B1-325", view.evidence_lines[0])
+        self.assertIn("trust not verified", view.evidence_lines[1])
+        self.assertIn("325 +- 2 MPa (MEASURED)", view.evidence_lines[2])
+
     def test_blender_rejects_authorizing_beam_response(self) -> None:
         response = handle_request(
             {

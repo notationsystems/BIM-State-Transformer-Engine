@@ -41,10 +41,10 @@ RGBA values are linear floats; hex values are their 8-bit form.
 
 | Signal | Vocabulary | RGBA | Hex |
 |---|---|---|---|
-| proceed | `ACCEPT`, `SATISFIED`, `ADMISSIBLE`, `PASS` | (0.10, 0.70, 0.20, 1.0) | `#1ab233` |
+| proceed | `ACCEPT`, `SATISFIED`, `ADMISSIBLE`, `PASS`, `READY` | (0.10, 0.70, 0.20, 1.0) | `#1ab233` |
 | stop | `REJECT`, `VIOLATED`, `BLOCKED`, `FAIL` | (0.85, 0.08, 0.08, 1.0) | `#d91414` |
-| attention | `REQUEST_EVIDENCE`, `UNRESOLVED`, `WARN` | (0.95, 0.55, 0.05, 1.0) | `#f28c0d` |
-| undecided | `ERROR` | (0.35, 0.35, 0.35, 1.0) | `#595959` |
+| attention | `REQUEST_EVIDENCE`, `UNRESOLVED`, `WARN`, `NEEDS_GEOMETRY_DERIVATION`, `MISSING_SOURCE_DATA` | (0.95, 0.55, 0.05, 1.0) | `#f28c0d` |
+| undecided | `ERROR`, `NOT_RUN` | (0.35, 0.35, 0.35, 1.0) | `#595959` |
 
 The six terms shared with the Blender panel (`ACCEPT`, `REJECT`,
 `REQUEST_EVIDENCE`, `SATISFIED`, `VIOLATED`, `UNRESOLVED`) must stay
@@ -113,8 +113,16 @@ never silently.
 * `gat ledger ledger.json [--html] [-o PATH]` — the execution-ledger
   timeline described above. Exit codes: 0 rendered timeline, 2 invalid or
   tampered chain, 3 I/O error.
+* `gat audit model.ifc --html` — the fail-closed compatibility inventory
+  in the report grammar: pipeline stages, supported products, and issues
+  accented by their own statuses, plus the audit's honest assurance card.
+  A saved audit JSON also renders through `gat report audit.json`, and a
+  readiness claim that contradicts its stage statuses is refused.
 * Blender panel — loads the same response files; colours Bonsai objects by
-  signal class; never mutates IFC state.
+  signal class; never mutates IFC state. For beam responses it shows the
+  conditioning evidence (certificate, issuer with trust status, observed
+  value) and the assurance flags verbatim — `issuer_trust_verified no`
+  stays visible, exactly as in the HTML report.
 
 ## Non-goals
 

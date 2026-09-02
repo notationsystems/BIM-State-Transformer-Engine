@@ -341,6 +341,55 @@ class LedgerTimelineTests(unittest.TestCase):
                 self.assertTrue(handle.read().startswith("<!doctype html>"))
 
 
+class AuditRenderingTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        from gat.ifc_audit import audit_ifc_file
+
+        cls.document = audit_ifc_file(MODEL).to_dict()
+
+    def test_audit_format_constant_matches_the_audit_module(self) -> None:
+        from gat.ifc_audit import AUDIT_FORMAT
+
+        self.assertEqual(report.AUDIT_FORMAT, AUDIT_FORMAT)
+
+    def test_ready_audit_renders_stages_products_and_assurance(self) -> None:
+        decoded = report.decode_response(copy.deepcopy(self.document))
+        self.assertEqual(decoded.operation, "audit")
+        self.assertEqual(decoded.disposition, "PASS")
+        text = report.render_text(decoded)
+        self.assertIn("fail-closed IFC compatibility audit", text)
+        self.assertIn("pipeline stages", text)
+        self.assertIn("READY", text)
+        self.assertIn("audit_authorizes_decisions        no", text)
+        self.assertIn(report.NON_AUTHORIZING_FOOTER, text)
+        html = report.render_html(decoded)
+        self.assertNotIn("<script", html)
+        self.assertIn(report.disposition_hex("PASS"), html)
+
+    def test_readiness_claim_must_match_stage_statuses(self) -> None:
+        tampered = copy.deepcopy(self.document)
+        tampered["pipeline"]["lowering"]["status"] = "BLOCKED"
+        with self.assertRaises(ValueError):
+            report.decode_response(tampered)
+
+    def test_audit_cli_emits_html(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "audit.html")
+            self.assertEqual(cli_main(["audit", MODEL, "--html", "-o", out]), 0)
+            with open(out, encoding="utf-8") as handle:
+                content = handle.read()
+            self.assertTrue(content.startswith("<!doctype html>"))
+            self.assertIn("fail-closed IFC compatibility audit", content)
+
+    def test_saved_audit_json_renders_through_gat_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "audit.json")
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(self.document, handle)
+            self.assertEqual(cli_main(["report", path, "-o", os.devnull]), 0)
+
+
 class CliReportTests(unittest.TestCase):
     def run_cli(self, *argv: str) -> int:
         return cli_main(list(argv))

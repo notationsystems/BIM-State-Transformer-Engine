@@ -18,7 +18,7 @@ from .bridge import load_response
 bl_info = {
     "name": "GAT Evidence and Assurance",
     "author": "Notation Systems",
-    "version": (0, 1, 0),
+    "version": (0, 2, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > GAT",
     "description": "Review evidence-bound BIM and beam assurance decisions",
@@ -63,6 +63,11 @@ class GAT_OT_load_workflow_response(Operator):
                 f"{revised_capacity / 1000.0:.1f} kN*m"
             )
         )
+        scene.gat_evidence = "; ".join(getattr(view, "evidence_lines", ()))
+        scene.gat_assurance_flags = "; ".join(
+            f"{flag} {value}"
+            for flag, value in getattr(view, "assurance_flags", ())
+        )
 
         targets = set(view.overlay_subjects)
         colored = 0
@@ -106,6 +111,16 @@ class GAT_PT_evidence_assurance(Panel):
             calculation.label(text=scene.gat_method)
             calculation.label(text=f"Capacity: {scene.gat_capacity_change}")
             calculation.label(text=f"Oracle: {scene.gat_oracle}")
+        if scene.gat_evidence:
+            evidence = layout.box()
+            evidence.label(text="Conditioning evidence")
+            for line in scene.gat_evidence.split("; "):
+                evidence.label(text=line)
+        if scene.gat_assurance_flags:
+            assurance = layout.box()
+            assurance.label(text="Assurance flags")
+            for line in scene.gat_assurance_flags.split("; "):
+                assurance.label(text=line)
         layout.label(text=f"Case: {scene.gat_case_id}")
         layout.label(text=f"State: {scene.gat_world_digest[:12]}…")
         layout.label(text="Read-only: no IFC state was changed")
@@ -127,6 +142,8 @@ _SCENE_PROPERTIES = {
     "gat_method": StringProperty(name="Engineering method"),
     "gat_oracle": StringProperty(name="Validation oracle"),
     "gat_capacity_change": StringProperty(name="Capacity change"),
+    "gat_evidence": StringProperty(name="Conditioning evidence"),
+    "gat_assurance_flags": StringProperty(name="Assurance flags"),
 }
 
 

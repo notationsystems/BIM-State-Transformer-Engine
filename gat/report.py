@@ -32,6 +32,7 @@ import re
 from typing import Mapping, Sequence
 
 RESPONSE_FORMAT = "gat-headless-response-v1"
+AUDIT_FORMAT = "gat-ifc-audit-v1"
 
 #: Signal classes — what a rendered term asks of the reader.
 PROCEED = "proceed"
@@ -41,12 +42,13 @@ UNDECIDED = "undecided"
 
 #: Decision vocabulary -> signal class, across every response family:
 #: acceptance dispositions, engineering verdicts, change dispositions,
-#: and invariant statuses.
+#: invariant statuses, and audit entity/stage statuses.
 SIGNAL_CLASSES: dict[str, str] = {
     "ACCEPT": PROCEED,
     "SATISFIED": PROCEED,
     "ADMISSIBLE": PROCEED,
     "PASS": PROCEED,
+    "READY": PROCEED,
     "REJECT": STOP,
     "VIOLATED": STOP,
     "BLOCKED": STOP,
@@ -54,7 +56,10 @@ SIGNAL_CLASSES: dict[str, str] = {
     "REQUEST_EVIDENCE": ATTENTION,
     "UNRESOLVED": ATTENTION,
     "WARN": ATTENTION,
+    "NEEDS_GEOMETRY_DERIVATION": ATTENTION,
+    "MISSING_SOURCE_DATA": ATTENTION,
     "ERROR": UNDECIDED,
+    "NOT_RUN": UNDECIDED,
 }
 
 #: Signal class -> linear RGBA.  The six decision terms shared with the
@@ -285,8 +290,11 @@ def _event_card(event) -> Card:
 
 
 def decode_response(value: object) -> DecisionReport:
-    """Normalize one headless response, refusing anything inconsistent."""
+    """Normalize one headless response or audit document, refusing anything
+    inconsistent."""
     response = _object(value, "response")
+    if response.get("format") == AUDIT_FORMAT:
+        return _audit_report(response)
     if response.get("format") != RESPONSE_FORMAT:
         raise ValueError(f"unsupported response format {response.get('format')!r}")
     if set(response) == {"format", "error"}:
@@ -707,6 +715,168 @@ def _change_report(
         notes=(),
         blocks=tuple(blocks),
         footers=(PREVIEW_FOOTER, NON_AUTHORIZING_FOOTER, READ_ONLY_FOOTER),
+    )
+
+
+_AUDIT_STAGE_STATUSES = frozenset({"PASS", "WARN", "BLOCKED", "NOT_RUN"})
+_AUDIT_ENTITY_STATUSES = frozenset(
+    {"READY", "NEEDS_GEOMETRY_DERIVATION", "MISSING_SOURCE_DATA", "BLOCKED"}
+)
+
+
+def _audit_report(document: Mapping[str, object]) -> DecisionReport:
+    """Normalize a ``gat audit`` JSON document into the report grammar."""
+    source = _object(document.get("source"), "source")
+    pipeline = _object(document.get("pipeline"), "pipeline")
+    ready = pipeline.get("pipeline_ready")
+    if not isinstance(ready, bool):
+        raise ValueError("pipeline.pipeline_ready must be boolean")
+
+    stage_rows: list[tuple[str, ...]] = []
+    stage_accents: list[str] = []
+    stages = [("parse", _object(document.get("parse"), "parse"))]
+    stages += [
+        (name, _object(pipeline.get(name), f"pipeline.{name}"))
+        for name in ("lowering", "compilation", "verification")
+    ]
+    statuses: dict[str, str] = {}
+    for name, stage in stages:
+        status = _string(stage.get("status"), f"{name}.status")
+        if status not in _AUDIT_STAGE_STATUSES:
+            raise ValueError(f"unsupported audit stage status {status!r}")
+        statuses[name] = status
+        message = stage.get("message")
+        error_type = stage.get("error_type")
+        detail = ""
+        if isinstance(error_type, str) and error_type:
+            detail = error_type
+        if isinstance(message, str) and message:
+            detail = f"{detail}: {message}" if detail else message
+        stage_rows.append((name, status, detail))
+        stage_accents.append(status)
+    expected_ready = (
+        statuses["parse"] == "PASS"
+        and statuses["lowering"] == "PASS"
+        and statuses["compilation"] == "PASS"
+        and statuses["verification"] in ("PASS", "WARN")
+    )
+    if ready != expected_ready:
+        raise ValueError("audit readiness claim contradicts its stage statuses")
+
+    entity_rows: list[tuple[str, ...]] = []
+    entity_accents: list[str] = []
+    entities = _array(document.get("entities"), "entities")
+    for item in entities[:20]:
+        entity = _object(item, "entity")
+        status = _string(entity.get("status"), "entity.status")
+        if status not in _AUDIT_ENTITY_STATUSES:
+            raise ValueError(f"unsupported audit entity status {status!r}")
+        name = entity.get("name")
+        global_id = entity.get("global_id")
+        shown = name if isinstance(name, str) and name else (
+            global_id if isinstance(global_id, str) else "<unnamed>"
+        )
+        missing = entity.get("missing_quantities")
+        missing_text = (
+            ", ".join(str(item) for item in missing)
+            if isinstance(missing, list) and missing
+            else ""
+        )
+        entity_rows.append(
+            (
+                shown,
+                _string(entity.get("canonical_class"), "entity.canonical_class"),
+                status,
+                missing_text,
+            )
+        )
+        entity_accents.append(status)
+    entity_overflow = (
+        f"and {len(entities) - 20} more supported products"
+        if len(entities) > 20
+        else ""
+    )
+
+    inventory = _object(document.get("inventory"), "inventory")
+    opaque = _object(inventory.get("opaque_type_counts"), "opaque_type_counts")
+    inventory_card = Card(
+        "inventory",
+        (
+            (
+                "instances",
+                f"{_count(inventory.get('instance_count'), 'instance_count')} total, "
+                f"{_count(inventory.get('supported_product_count'), 'supported_product_count')} "
+                "supported products",
+            ),
+            (
+                "opaque types",
+                f"{len(opaque)} (preserved verbatim, never silently dropped)",
+            ),
+        ),
+    )
+
+    issue_counts = _object(document.get("issue_counts"), "issue_counts")
+    blocks: list[Card | Table] = [
+        Table(
+            "pipeline stages",
+            ("stage", "status", "detail"),
+            tuple(stage_rows),
+            tuple(stage_accents),
+        ),
+        inventory_card,
+    ]
+    if entity_rows:
+        blocks.append(
+            Table(
+                "supported products",
+                ("entity", "class", "status", "missing quantities"),
+                tuple(entity_rows),
+                tuple(entity_accents),
+                overflow=entity_overflow,
+            )
+        )
+    if issue_counts:
+        blocks.append(
+            Table(
+                "issues",
+                ("code", "count"),
+                tuple(
+                    (code, str(_count(count, f"issue_counts.{code}")))
+                    for code, count in sorted(issue_counts.items())
+                ),
+                tuple("" for _ in issue_counts),
+            )
+        )
+    identity_fields: list[tuple[str, str]] = [
+        ("sha256", _string(source.get("sha256"), "source.sha256")),
+        (
+            "size",
+            f"{_count(source.get('size_bytes'), 'source.size_bytes')} bytes",
+        ),
+        ("schema", str(document.get("schema") or "<unparsed>")),
+    ]
+    world_digest = pipeline.get("world_digest")
+    if isinstance(world_digest, str) and world_digest:
+        identity_fields.append(("world", world_digest))
+    blocks.append(Card("identity", tuple(identity_fields)))
+    blocks.append(
+        Card(
+            "assurance",
+            tuple(_scalar_fields(_object(document.get("assurance"), "assurance"))),
+        )
+    )
+    path = _string(source.get("path"), "source.path")
+    name = path.replace("\\", "/").rsplit("/", 1)[-1]
+    return DecisionReport(
+        operation="audit",
+        request_id="",
+        world_digest=world_digest if isinstance(world_digest, str) else "",
+        disposition="PASS" if ready else "BLOCKED",
+        subject=name,
+        subline="fail-closed IFC compatibility audit",
+        notes=(),
+        blocks=tuple(blocks),
+        footers=(NON_AUTHORIZING_FOOTER, READ_ONLY_FOOTER),
     )
 
 
