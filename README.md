@@ -247,7 +247,7 @@ bridge for Blender, Omniverse, and other USD hosts.
 The engine without writing Python — for BIM coordinators, GIS pipelines, and artists:
 
 ```bash
-gat audit   model.ifc --text                   # fail-closed IFC compatibility inventory
+gat audit   model.ifc --text                   # fail-closed IFC compatibility inventory (--html for a report page)
 gat verify  model.ifc                          # invariants + compliance under uncertainty
 gat check   model.ifc --proposed duct.json     # probabilistic clash report; exit 1 on a likely clash
 gat inspect model.ifc --var "Level 1.TotalWallCost"   # mean ± sigma, sensitivities, variance attribution

@@ -58,6 +58,12 @@ class BeamAssuranceView:
     method: str
     oracle_id: str
     may_authorize: bool
+    #: (flag name, "yes"/"no") pairs from the response's assurance record,
+    #: shown verbatim even when unflattering.
+    assurance_flags: tuple[tuple[str, str], ...] = ()
+    #: Short human lines describing the conditioning evidence: certificate,
+    #: issuer (with its trust status), and the observed value.
+    evidence_lines: tuple[str, ...] = ()
 
     @property
     def requests(self) -> tuple[EvidenceRequestView, ...]:
@@ -197,6 +203,32 @@ def _parse_beam_assurance(
     if method != BEAM_METHOD or oracle_id != BEAM_ORACLE_ID:
         raise ValueError("unsupported beam method or validation oracle")
 
+    assurance_flags = tuple(
+        (key, "yes" if value else "no")
+        for key, value in assurance.items()
+        if isinstance(value, bool)
+    )
+    evidence = _object(result.get("evidence"), "evidence")
+    observation = _object(evidence.get("evidence"), "evidence.evidence")
+    certificate = _object(
+        evidence.get("material_certificate"), "evidence.material_certificate"
+    )
+    issuer = _object(certificate.get("issuer"), "certificate.issuer")
+    trust = "trusted" if issuer.get("trust_verified") is True else "trust not verified"
+    evidence_lines = (
+        (
+            f"{_string(certificate.get('certificate_id'), 'certificate_id')} "
+            f"({_string(certificate.get('issued_at'), 'issued_at')})"
+        ),
+        f"{_string(issuer.get('name'), 'issuer.name')} ({trust})",
+        (
+            f"{_number(observation.get('observed_value'), 'observed_value'):g} +- "
+            f"{_number(observation.get('noise_sigma'), 'noise_sigma'):g} "
+            f"{_string(observation.get('unit'), 'unit')} "
+            f"({_string(observation.get('kind'), 'kind')})"
+        ),
+    )
+
     return BeamAssuranceView(
         request_id=_string(response["request_id"], "request_id"),
         world_digest=world_digest,
@@ -217,6 +249,8 @@ def _parse_beam_assurance(
         method=method,
         oracle_id=oracle_id,
         may_authorize=False,
+        assurance_flags=assurance_flags,
+        evidence_lines=evidence_lines,
     )
 
 

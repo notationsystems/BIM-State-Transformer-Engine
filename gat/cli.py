@@ -61,7 +61,12 @@ def _write_report(rendered: str, output: str | None) -> None:
 def _run_audit(args: argparse.Namespace) -> int:
     try:
         report = audit_ifc_file(args.model)
-        rendered = report.render() + "\n" if args.text else report.to_json(pretty=not args.compact)
+        if args.html:
+            rendered = render_html(decode_response(report.to_dict()))
+        elif args.text:
+            rendered = report.render() + "\n"
+        else:
+            rendered = report.to_json(pretty=not args.compact)
         _write_report(rendered, args.output)
     except OSError as exc:
         sys.stderr.write(f"gat audit: {exc}\n")
@@ -326,6 +331,11 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("-o", "--output", help="write the report to this path")
     audit.add_argument("--compact", action="store_true", help="emit compact canonical JSON")
     audit.add_argument("--text", action="store_true", help="emit a concise human-readable summary")
+    audit.add_argument(
+        "--html",
+        action="store_true",
+        help="emit a self-contained, script-free HTML report",
+    )
     audit.set_defaults(handler=_run_audit)
 
     p = commands.add_parser("check", help="probabilistic clash report")
