@@ -69,6 +69,17 @@ it is never rendered with a guessed colour.
 Terminal renderings are pure ASCII (`+-`, `->`, `...`, `kN*m`); GUI and
 HTML surfaces may use the typographic forms (`±`, `→`, `…`, `kN·m`).
 
+## Themes and print
+
+Report pages follow the reader's system theme (`prefers-color-scheme`)
+through design tokens — background, card, ink, muted, rules — while the
+four signal colours stay literally identical in light and dark, because
+they are semantic, not decorative. In print, shadows and tinted
+backgrounds drop away, cards and tables never break across pages, badges
+and the headline banner keep their colour, and every digest prints in
+full (the on-screen disclosure collapses; a print-only twin carries the
+value). Instruments stay light-only for now; their palette is the HUD's.
+
 ## Report anatomy
 
 Every rendering of a headless response has the same skeleton, in order:
@@ -152,7 +163,10 @@ never silently.
   place signal colour touches geometry, because it *is* a verdict. The
   request's proposed clearance boxes are drawn as always-visible wireframes
   in the same colour, so a REJECT is seen at the exact spot it was
-  decided. The HUD card repeats the report's headline badge, reasons,
+  decided. Because the engine's world digest currently carries the model's
+  source path string, `gat view` loads the model through the request's own
+  path form when it names the same file; a digest mismatch is refused with
+  that hint rather than silently re-bound. The HUD card repeats the report's headline badge, reasons,
   risk table, next evidence, and footers.
 
 ## Non-goals

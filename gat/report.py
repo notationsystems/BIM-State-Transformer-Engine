@@ -970,31 +970,38 @@ def render_text(report: DecisionReport) -> str:
 # -- HTML rendering ---------------------------------------------------------
 
 _HTML_STYLE = """
-:root { color-scheme: light; }
-body { margin: 0; background: #f5f4f1; color: #1c1c1a;
+:root { color-scheme: light dark;
+  --bg: #f5f4f1; --card: #ffffff; --ink: #1c1c1a; --muted: #6b6a66;
+  --rule: #e4e2dc; --rule-soft: #efede8; --code-bg: #f0efeb; --note-rule: #c9c6bf;
+  --shadow: 0 1px 2px rgba(0,0,0,0.06); }
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #17171a; --card: #222226; --ink: #ecebe6; --muted: #a09e97;
+  --rule: #3a3a40; --rule-soft: #2e2e33; --code-bg: #2b2b30; --note-rule: #4a4a50;
+  --shadow: 0 1px 2px rgba(0,0,0,0.4); } }
+body { margin: 0; background: var(--bg); color: var(--ink);
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
 main { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
 header.banner { color: #fff; border-radius: 10px; padding: 1.1rem 1.3rem; }
 header.banner h1 { margin: 0; font-size: 1.35rem; letter-spacing: 0.02em; }
 header.banner p { margin: 0.2rem 0 0; opacity: 0.92; }
-p.note { background: #fff; border-left: 4px solid #c9c6bf;
+p.note { background: var(--card); border-left: 4px solid var(--note-rule);
   padding: 0.6rem 0.9rem; border-radius: 0 8px 8px 0; }
-section { background: #fff; border-radius: 10px; padding: 0.9rem 1.2rem;
-  margin-top: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+section { background: var(--card); border-radius: 10px; padding: 0.9rem 1.2rem;
+  margin-top: 1rem; box-shadow: var(--shadow); }
 section.proceed { border-left: 4px solid #1ab233; }
 section.stop { border-left: 4px solid #d91414; }
 section.attention { border-left: 4px solid #f28c0d; }
 section.undecided { border-left: 4px solid #595959; }
 section h2 { margin: 0 0 0.5rem; font-size: 0.8rem; text-transform: uppercase;
-  letter-spacing: 0.08em; color: #6b6a66; }
+  letter-spacing: 0.08em; color: var(--muted); }
 dl { margin: 0; display: grid; grid-template-columns: max-content 1fr;
   gap: 0.25rem 1rem; }
-dt { color: #6b6a66; } dd { margin: 0; overflow-wrap: anywhere; }
+dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
 div.tablewrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
-th { text-align: left; color: #6b6a66; font-weight: 600;
-  border-bottom: 1px solid #e4e2dc; padding: 0.3rem 0.75rem 0.3rem 0; }
-td { border-bottom: 1px solid #efede8; padding: 0.35rem 0.75rem 0.35rem 0;
+th { text-align: left; color: var(--muted); font-weight: 600;
+  border-bottom: 1px solid var(--rule); padding: 0.3rem 0.75rem 0.3rem 0; }
+td { border-bottom: 1px solid var(--rule-soft); padding: 0.35rem 0.75rem 0.35rem 0;
   vertical-align: top; }
 tr.proceed td:first-child { box-shadow: inset 3px 0 0 #1ab233; }
 tr.stop td:first-child { box-shadow: inset 3px 0 0 #d91414; }
@@ -1004,10 +1011,23 @@ span.badge { display: inline-block; color: #fff; border-radius: 999px;
 details.digest { display: inline; }
 details.digest summary { cursor: pointer; list-style: none; display: inline; }
 details.digest code.full { display: block; margin-top: 0.2rem; }
-code { font-size: 0.92em; background: #f0efeb; border-radius: 4px;
+span.print-digest { display: none; }
+code { font-size: 0.92em; background: var(--code-bg); border-radius: 4px;
   padding: 0.05em 0.3em; }
-footer { margin: 1.2rem 0 2rem; color: #6b6a66; font-size: 0.9rem; }
+footer { margin: 1.2rem 0 2rem; color: var(--muted); font-size: 0.9rem; }
 footer p { margin: 0.15rem 0; }
+@media print {
+  :root { --bg: #fff; --card: #fff; --shadow: none; --ink: #000; --muted: #444;
+    --rule: #bbb; --rule-soft: #ddd; --code-bg: transparent; }
+  body { font-size: 11pt; }
+  main { max-width: none; margin: 0; padding: 0; }
+  header.banner, section, p.note, table { break-inside: avoid; }
+  section { border: 1px solid var(--rule); }
+  header.banner, span.badge { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  details.digest { display: none; }
+  span.print-digest { display: inline; font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.85em; overflow-wrap: anywhere; }
+}
 """
 
 
@@ -1017,6 +1037,7 @@ def render_html(report: DecisionReport) -> str:
         "<!doctype html>",
         '<html lang="en"><head><meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<meta name="color-scheme" content="light dark">',
         f"<title>GAT decision report: {esc(report.subject)}</title>",
         f"<style>{_HTML_STYLE}</style></head><body><main>",
         f'<header class="banner" style="background:{disposition_hex(report.disposition)}">',
@@ -1079,10 +1100,13 @@ def _html_value(value: str) -> str:
     """Digest-looking values collapse to 12 chars with native disclosure."""
     esc = html_mod.escape
     if _DIGEST_RE.fullmatch(value):
+        # Closed <details> do not print, so a print-only twin carries the
+        # full digest onto paper.
         return (
             '<details class="digest">'
             f"<summary><code>{esc(format_digest(value))}</code></summary>"
             f'<code class="full">{esc(value)}</code></details>'
+            f'<span class="print-digest">{esc(value)}</span>'
         )
     return esc(value)
 
