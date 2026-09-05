@@ -220,10 +220,11 @@ def viewer_payload(
             }
         )
     samples = [_sample_entry(world, "nominal", spacing)]
-    samples.extend(
-        _sample_entry(sampled, f"sample {index + 1}", spacing)
-        for index, sampled in enumerate(sample_worlds(world, n, seed))
-    )
+    if n:
+        samples.extend(
+            _sample_entry(sampled, f"sample {index + 1}", spacing)
+            for index, sampled in enumerate(sample_worlds(world, n, seed))
+        )
     return {
         "format": VIEWER_SCENE_FORMAT,
         "model": model_name,

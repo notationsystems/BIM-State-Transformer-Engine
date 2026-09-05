@@ -183,6 +183,36 @@ class DecisionOverlayTests(unittest.TestCase):
         self.assertEqual(overlay["disposition"], "VIOLATED")
         self.assertEqual(overlay["subjects"], ["Beam-B1"])
 
+    def test_cli_loads_model_through_the_request_path_form(self) -> None:
+        import json
+
+        from gat.headless import handle_request
+
+        relative = os.path.relpath(MODEL)
+        request = clearance_request("relative-form")
+        request["state"]["path"] = relative
+        response = handle_request(request)
+        with tempfile.TemporaryDirectory() as tmp:
+            request_path = os.path.join(tmp, "request.json")
+            response_path = os.path.join(tmp, "response.json")
+            with open(request_path, "w", encoding="utf-8") as handle:
+                json.dump(request, handle)
+            with open(response_path, "w", encoding="utf-8") as handle:
+                json.dump(response, handle)
+            out = os.path.join(tmp, "viewer.html")
+            # absolute model path + relative request path: same file, so it binds
+            self.assertEqual(
+                cli_main(["view", MODEL, "-o", out, "--variations", "0",
+                          "--decision", response_path, "--request", request_path]),
+                0,
+            )
+            # without the request there is nothing to match against: refused with a hint
+            self.assertEqual(
+                cli_main(["view", MODEL, "-o", out, "--variations", "0",
+                          "--decision", response_path]),
+                2,
+            )
+
     def test_cli_embeds_the_overlay(self) -> None:
         import json
 
