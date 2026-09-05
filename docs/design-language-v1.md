@@ -69,6 +69,17 @@ it is never rendered with a guessed colour.
 Terminal renderings are pure ASCII (`+-`, `->`, `...`, `kN*m`); GUI and
 HTML surfaces may use the typographic forms (`±`, `→`, `…`, `kN·m`).
 
+## Themes and print
+
+Report pages follow the reader's system theme (`prefers-color-scheme`)
+through design tokens — background, card, ink, muted, rules — while the
+four signal colours stay literally identical in light and dark, because
+they are semantic, not decorative. In print, shadows and tinted
+backgrounds drop away, cards and tables never break across pages, badges
+and the headline banner keep their colour, and every digest prints in
+full (the on-screen disclosure collapses; a print-only twin carries the
+value). Instruments stay light-only for now; their palette is the HUD's.
+
 ## Report anatomy
 
 Every rendering of a headless response has the same skeleton, in order:
@@ -105,6 +116,31 @@ complete chain before rendering begins); and timelines longer than 50
 events elide the middle explicitly — first 5, a marked gap, last 45 —
 never silently.
 
+## Projection instruments and Workbench modes
+
+The platform synthesis names a projection triad — kepler.gl for analytical
+geography (*where is the pattern?*), CesiumJS for geodetic reality (*where
+does it exist?*), Three.js for computational structure (*how is it
+constituted?*) — behind Workbench modes: MAP, GLOBE, STRUCTURE, GRAPH,
+STATE, TIME, EVIDENCE, COMPLEXITY. The surfaces in this repository are the
+first instances of those modes over one engine, and should be read as such:
+
+| Mode | Surface today | Engine role it fills |
+|---|---|---|
+| STRUCTURE | `gat view` (belief ellipsoids, realizations, decision overlay) | the Three.js seat, currently a self-contained WebGL renderer |
+| STATE / EVIDENCE | `gat report` pages (decision, evidence, assurance cards) | report class |
+| TIME / EVIDENCE | `gat ledger` timeline | report class |
+| COMPLEXITY | `gat audit --html` (what the corpus can and cannot represent) | report class |
+
+Three rules carry across every mode: projection never mutates its source;
+identity survives representation (the same digest names the same world in
+every view); and visual adjacency is never evidence — a layout, a colour,
+or a proximity on screen proposes nothing to the corpus. The "knowledge
+debugger" intent — make missing provenance, unresolved identity, and
+contradiction *visible* rather than hidden — is already the reason
+assurance flags render `no` in plain sight and audit statuses like
+`NEEDS_GEOMETRY_DERIVATION` are accented, not filtered out.
+
 ## Surfaces
 
 * `gat report response.json` — terminal rendering of any of the four
@@ -135,7 +171,13 @@ never silently.
   and one chip per realization whose dot carries the signal palette for
   its invariant verdict. Element hues are identity colours (muted
   architectural neutrals), never signal colours; the geometry on screen
-  *is* the uncertainty, so no synthetic "error bars" are drawn.
+  *is* the uncertainty, so no synthetic "error bars" are drawn. Clicking
+  an element inspects it — name, class, and each extent as realized in the
+  current sample beside its nominal mean ± sigma, with fixed (non-belief)
+  axes labelled as such — and outlines its realized box in ink, always
+  visible. Under a sampled realization the nominal belief is ghosted in
+  grey so drift is legible; preset views (iso, top, front, side, reset)
+  keep orientation cheap.
 * `gat view … --decision response.json [--request request.json]` — the
   decision overlay. The response is bound to the loaded model fail-closed:
   its world digest (for beam assurance, its prior-world digest) must equal
@@ -146,7 +188,10 @@ never silently.
   place signal colour touches geometry, because it *is* a verdict. The
   request's proposed clearance boxes are drawn as always-visible wireframes
   in the same colour, so a REJECT is seen at the exact spot it was
-  decided. The HUD card repeats the report's headline badge, reasons,
+  decided. Because the engine's world digest currently carries the model's
+  source path string, `gat view` loads the model through the request's own
+  path form when it names the same file; a digest mismatch is refused with
+  that hint rather than silently re-bound. The HUD card repeats the report's headline badge, reasons,
   risk table, next evidence, and footers.
 
 ## Non-goals

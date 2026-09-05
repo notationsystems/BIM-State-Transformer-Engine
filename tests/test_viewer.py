@@ -48,6 +48,21 @@ class ViewerPayloadTests(unittest.TestCase):
             for index in sample["element"]:
                 self.assertLess(index, len(self.payload["elements"]))
 
+    def test_elements_carry_boxes_quantities_and_sigmas(self) -> None:
+        by_name = {element["name"]: element for element in self.payload["elements"]}
+        wall = by_name["Wall-Party"]
+        self.assertEqual(wall["quantities"], ["Length", "Width", "Height"])
+        self.assertEqual(len(wall["box"]["extents"]), 3)
+        self.assertTrue(all(sigma > 0 for sigma in wall["extents_sigma"]))
+        door = by_name["Door-1"]
+        self.assertIsNone(door["quantities"][1])
+        self.assertIsNone(door["extents_sigma"][1])
+        for sample in self.payload["samples"]:
+            self.assertEqual(len(sample["boxes"]), 7 * len(self.payload["elements"]))
+        nominal = self.payload["samples"][0]["boxes"]
+        index = self.payload["elements"].index(wall)
+        self.assertEqual(nominal[index * 7 + 4 : index * 7 + 7], wall["box"]["extents"])
+
     def test_payload_is_deterministic(self) -> None:
         again = viewer_payload(self.world, n=3, seed=7, model_name="model.ifc")
         self.assertEqual(self.payload, again)
@@ -167,6 +182,36 @@ class DecisionOverlayTests(unittest.TestCase):
         overlay = decision_overlay(GatSession.load_ifc(beam_model).world, response)
         self.assertEqual(overlay["disposition"], "VIOLATED")
         self.assertEqual(overlay["subjects"], ["Beam-B1"])
+
+    def test_cli_loads_model_through_the_request_path_form(self) -> None:
+        import json
+
+        from gat.headless import handle_request
+
+        relative = os.path.relpath(MODEL)
+        request = clearance_request("relative-form")
+        request["state"]["path"] = relative
+        response = handle_request(request)
+        with tempfile.TemporaryDirectory() as tmp:
+            request_path = os.path.join(tmp, "request.json")
+            response_path = os.path.join(tmp, "response.json")
+            with open(request_path, "w", encoding="utf-8") as handle:
+                json.dump(request, handle)
+            with open(response_path, "w", encoding="utf-8") as handle:
+                json.dump(response, handle)
+            out = os.path.join(tmp, "viewer.html")
+            # absolute model path + relative request path: same file, so it binds
+            self.assertEqual(
+                cli_main(["view", MODEL, "-o", out, "--variations", "0",
+                          "--decision", response_path, "--request", request_path]),
+                0,
+            )
+            # without the request there is nothing to match against: refused with a hint
+            self.assertEqual(
+                cli_main(["view", MODEL, "-o", out, "--variations", "0",
+                          "--decision", response_path]),
+                2,
+            )
 
     def test_cli_embeds_the_overlay(self) -> None:
         import json

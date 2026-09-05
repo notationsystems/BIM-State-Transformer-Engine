@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 import sys
 from typing import Sequence
@@ -96,19 +97,39 @@ def _run_report(args: argparse.Namespace) -> int:
 def _run_view(args: argparse.Namespace) -> int:
     from gat.geometry.viewer import decision_overlay, export_viewer_html
 
-    session = _load(args.model)
+    model_path = args.model
     decision = None
+    request = None
+    if args.request and not args.decision:
+        print("gat view: --request requires --decision", file=sys.stderr)
+        return 2
+    if args.request:
+        with open(args.request, "r", encoding="utf-8") as handle:
+            request = json.load(handle)
+        # The world digest carries the source path string, so load the model
+        # exactly as the request did when both name the same file.
+        state = request.get("state") if isinstance(request, dict) else None
+        request_path = state.get("path") if isinstance(state, dict) else None
+        if (
+            isinstance(request_path, str)
+            and os.path.exists(request_path)
+            and os.path.samefile(request_path, args.model)
+        ):
+            model_path = request_path
+    session = _load(model_path)
     if args.decision:
         with open(args.decision, "r", encoding="utf-8") as handle:
             response = json.load(handle)
-        request = None
-        if args.request:
-            with open(args.request, "r", encoding="utf-8") as handle:
-                request = json.load(handle)
-        decision = decision_overlay(session.world, response, request)
-    elif args.request:
-        print("gat view: --request requires --decision", file=sys.stderr)
-        return 2
+        try:
+            decision = decision_overlay(session.world, response, request)
+        except ValueError as exc:
+            if "different world" in str(exc):
+                raise ValueError(
+                    f"{exc}; the world digest includes the model's path string, so "
+                    "load it with the same path form the headless request used "
+                    "(or pass --request so gat view can match it)"
+                ) from exc
+            raise
     count = export_viewer_html(
         session.world,
         args.output,

@@ -251,6 +251,18 @@ class HtmlRenderingTests(unittest.TestCase):
         self.assertIn("<details", html)
         self.assertIn(decoded.world_digest, html)
 
+    def test_html_honours_system_theme_and_prints_full_digests(self) -> None:
+        decoded = report.decode_response(beam_response())
+        html = report.render_html(decoded)
+        self.assertIn('<meta name="color-scheme" content="light dark">', html)
+        self.assertIn("@media (prefers-color-scheme: dark)", html)
+        self.assertIn("@media print", html)
+        self.assertIn(f'<span class="print-digest">{decoded.world_digest}</span>', html)
+        # signal colours are semantic: the dark block redefines tokens only
+        dark_block = html.split("@media (prefers-color-scheme: dark)", 1)[1].split("} }", 1)[0]
+        for signal_hex in ("#1ab233", "#d91414", "#f28c0d", "#595959"):
+            self.assertNotIn(signal_hex, dark_block)
+
     def test_html_escapes_untrusted_response_text(self) -> None:
         tampered = copy.deepcopy(acceptance_response())
         tampered["result"]["reasons"] = ["<img src=x onerror=alert(1)>"]

@@ -44,6 +44,14 @@ CLASS_STYLES: dict[str, tuple[str, float]] = {
 }
 
 
+def _box_record(box) -> dict[str, object]:
+    return {
+        "origin": [round(float(v), 4) for v in box.origin],
+        "angle": round(float(box.angle), 6),
+        "extents": [round(float(v), 4) for v in box.extents],
+    }
+
+
 def _sample_entry(world: World, label: str, spacing: float) -> dict[str, object]:
     scene = derive_scene(world, spacing=spacing)
     cloud = scene.cloud
@@ -66,6 +74,16 @@ def _sample_entry(world: World, label: str, spacing: float) -> dict[str, object]
         "element": [int(index) for index in cloud.element_index],
         "centers": [round(float(value), 4) for value in cloud.means.ravel()],
         "axes": [round(float(value), 4) for value in axes.ravel()],
+        # Realized element boxes (origin xyz, yaw, extents xyz) for picking.
+        "boxes": [
+            value
+            for element in scene.elements
+            for value in (
+                *(round(float(v), 4) for v in element.box.origin),
+                round(float(element.box.angle), 6),
+                *(round(float(v), 4) for v in element.box.extents),
+            )
+        ],
     }
 
 
@@ -191,13 +209,22 @@ def viewer_payload(
                 "color": style[0],
                 "alpha": style[1],
                 "solid": element.is_solid,
+                "box": _box_record(element.box),
+                "quantities": [
+                    None if var is None else var.quantity for var in element.extent_vars
+                ],
+                "extents_sigma": [
+                    None if var is None else round(float(world.full.std(var)), 5)
+                    for var in element.extent_vars
+                ],
             }
         )
     samples = [_sample_entry(world, "nominal", spacing)]
-    samples.extend(
-        _sample_entry(sampled, f"sample {index + 1}", spacing)
-        for index, sampled in enumerate(sample_worlds(world, n, seed))
-    )
+    if n:
+        samples.extend(
+            _sample_entry(sampled, f"sample {index + 1}", spacing)
+            for index, sampled in enumerate(sample_worlds(world, n, seed))
+        )
     return {
         "format": VIEWER_SCENE_FORMAT,
         "model": model_name,
@@ -245,7 +272,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f5f4f1;
 canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
 #hud { position: fixed; top: 1rem; left: 1rem; width: 17rem; background: #fff;
   border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-  padding: 0.8rem 1rem; user-select: none; }
+  padding: 0.8rem 1rem; user-select: none; box-sizing: border-box;
+  max-height: calc(100vh - 2rem); overflow-y: auto; scrollbar-width: thin; }
 #hud h1 { margin: 0; font-size: 1rem; }
 #hud .meta { color: #6b6a66; font-size: 0.8rem; margin: 0.15rem 0 0.6rem;
   overflow-wrap: anywhere; }
@@ -272,12 +300,22 @@ label.cls .swatch { display: inline-block; width: 0.7em; height: 0.7em;
 #decision table { border-collapse: collapse; width: 100%; font-size: 0.76rem; margin-top: 0.3rem; }
 #decision td { padding: 0.1rem 0.4rem 0.1rem 0; border-bottom: 1px solid #ece9e2; vertical-align: top; }
 #decision label { display: block; margin-top: 0.35rem; font-size: 0.78rem; }
+#selected { border-left: 4px solid #1c1c1a; padding: 0.4rem 0.6rem; margin: 0.4rem 0 0.2rem;
+  background: #faf9f6; border-radius: 0 8px 8px 0; font-size: 0.82rem; }
+#selected h3 { margin: 0; font-size: 0.9rem; }
+#selected .cls-name { color: #6b6a66; font-size: 0.76rem; }
+#selected table { border-collapse: collapse; width: 100%; font-size: 0.76rem; margin-top: 0.3rem; }
+#selected td { padding: 0.1rem 0.4rem 0.1rem 0; border-bottom: 1px solid #ece9e2; }
+#selected td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#views button { border: 1px solid #d8d5cd; background: #fff; border-radius: 6px;
+  padding: 0.1rem 0.55rem; font: inherit; font-size: 0.8rem; cursor: pointer; margin: 0 0.25rem 0.25rem 0; }
 </style></head><body>
 <canvas id="gl"></canvas>
 <div id="hud">
   <h1>GAT as-built viewer</h1>
   <div class="meta" id="meta"></div>
   <div id="decision" hidden></div>
+  <div id="selected" hidden></div>
   <h2>Realization</h2>
   <div id="samples"></div>
   <div id="failures"></div>
@@ -285,8 +323,11 @@ label.cls .swatch { display: inline-block; width: 0.7em; height: 0.7em;
   <input id="sigma" type="range" min="0.5" max="3" step="0.25" value="1.75">
   <h2>Elements</h2>
   <div id="classes"></div>
+  <label class="cls"><input id="ghost" type="checkbox" checked> ghost the nominal under samples</label>
+  <h2>View</h2>
+  <div id="views"></div>
   <footer>
-    <p>orbit: drag &middot; zoom: wheel &middot; pan: shift-drag &middot; &larr;/&rarr; realization</p>
+    <p>orbit: drag &middot; zoom: wheel &middot; pan: shift-drag &middot; click: inspect &middot; &larr;/&rarr; realization &middot; esc: clear</p>
     <p>Read-only: no BIM state was changed.</p>
   </footer>
 </div>
@@ -356,13 +397,14 @@ const SPLAT_PROGRAM = program(`
     vNormal = aNormal; vColor = aColor;
   }`, `
   precision mediump float;
-  varying vec3 vNormal; varying vec4 vColor;
+  varying vec3 vNormal; varying vec4 vColor; uniform float uGhost;
   void main() {
     vec3 n = normalize(vNormal);
     float key = max(dot(n, normalize(vec3(0.5, 0.35, 0.8))), 0.0);
     float fill = max(dot(n, normalize(vec3(-0.4, -0.2, 0.4))), 0.0);
     vec3 shaded = vColor.rgb * (0.42 + 0.5 * key + 0.18 * fill);
-    gl_FragColor = vec4(shaded, vColor.a);
+    shaded = mix(shaded, vec3(0.66), 0.85 * uGhost);
+    gl_FragColor = vec4(shaded, vColor.a * (1.0 - 0.78 * uGhost));
   }`);
 const LINE_PROGRAM = program(`
   attribute vec3 aPosition; uniform mat4 uProj, uView;
@@ -433,26 +475,64 @@ function buildSample(index) {
   return entry;
 }
 
-// Proposed clearance geometry: corner-origin yawed boxes as 12 edges each.
-const proposals = (() => {
-  if (!DECISION || !DECISION.proposals.length) return null;
-  const lines = [];
-  for (const box of DECISION.proposals) {
-    const c = Math.cos(box.angle), s = Math.sin(box.angle);
-    const corner = (fx, fy, fz) => {
-      const lx = fx * box.extents[0], ly = fy * box.extents[1], lz = fz * box.extents[2];
-      return [box.origin[0] + c * lx - s * ly, box.origin[1] + s * lx + c * ly, box.origin[2] + lz];
-    };
-    const v = [corner(0,0,0), corner(1,0,0), corner(1,1,0), corner(0,1,0),
-               corner(0,0,1), corner(1,0,1), corner(1,1,1), corner(0,1,1)];
-    for (const [a, b] of [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]])
-      lines.push(...v[a], ...v[b]);
-  }
+// Corner-origin yawed boxes ({origin, angle, extents}) as 12 edges each.
+function boxEdges(box, lines) {
+  const c = Math.cos(box.angle), s = Math.sin(box.angle);
+  const corner = (fx, fy, fz) => {
+    const lx = fx * box.extents[0], ly = fy * box.extents[1], lz = fz * box.extents[2];
+    return [box.origin[0] + c * lx - s * ly, box.origin[1] + s * lx + c * ly, box.origin[2] + lz];
+  };
+  const v = [corner(0,0,0), corner(1,0,0), corner(1,1,0), corner(0,1,0),
+             corner(0,0,1), corner(1,0,1), corner(1,1,1), corner(0,1,1)];
+  for (const [a, b] of [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]])
+    lines.push(...v[a], ...v[b]);
+  return lines;
+}
+function lineBuffer(lines) {
   const buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STATIC_DRAW);
   return { buffer, count: lines.length / 3 };
+}
+function drawLines(lines_, rgb, proj, view) {
+  gl.useProgram(LINE_PROGRAM);
+  gl.uniformMatrix4fv(gl.getUniformLocation(LINE_PROGRAM, "uProj"), false, proj);
+  gl.uniformMatrix4fv(gl.getUniformLocation(LINE_PROGRAM, "uView"), false, view);
+  gl.uniform4f(gl.getUniformLocation(LINE_PROGRAM, "uColor"), rgb[0], rgb[1], rgb[2], 1);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lines_.buffer);
+  const location = gl.getAttribLocation(LINE_PROGRAM, "aPosition");
+  gl.vertexAttribPointer(location, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(location);
+  gl.drawArrays(gl.LINES, 0, lines_.count);
+}
+const proposals = (() => {
+  if (!DECISION || !DECISION.proposals.length) return null;
+  const lines = [];
+  for (const box of DECISION.proposals) boxEdges(box, lines);
+  return lineBuffer(lines);
 })();
+
+// Realized element boxes of one sample, for picking and selection outlines.
+function sampleBox(sampleIndex, elementIndex) {
+  const b = SCENE.samples[sampleIndex].boxes, o = elementIndex * 7;
+  return { origin: [b[o], b[o+1], b[o+2]], angle: b[o+3], extents: [b[o+4], b[o+5], b[o+6]] };
+}
+function rayBoxDistance(origin, dir, box) {
+  // Slab test in the box's local frame (rotate by -yaw about z).
+  const c = Math.cos(-box.angle), s = Math.sin(-box.angle);
+  const px = origin[0] - box.origin[0], py = origin[1] - box.origin[1], pz = origin[2] - box.origin[2];
+  const o = [c * px - s * py, s * px + c * py, pz];
+  const d = [c * dir[0] - s * dir[1], s * dir[0] + c * dir[1], dir[2]];
+  let tmin = 0, tmax = Infinity;
+  for (let axis = 0; axis < 3; axis += 1) {
+    if (Math.abs(d[axis]) < 1e-9) { if (o[axis] < 0 || o[axis] > box.extents[axis]) return null; continue; }
+    let t1 = (0 - o[axis]) / d[axis], t2 = (box.extents[axis] - o[axis]) / d[axis];
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2);
+    if (tmin > tmax) return null;
+  }
+  return tmin;
+}
 
 // -- scene bounds and camera ----------------------------------------------
 const nominal = SCENE.samples[0];
@@ -488,6 +568,8 @@ const state = {
   sample: 0,
   sigma: 1.75,
   overlay: true,
+  ghost: true,
+  selected: null,
   hidden: new Set(SCENE.classes.map((name, i) => name === "IfcSpace" ? i : -1).filter((i) => i >= 0)),
 };
 const meta = document.getElementById("meta");
@@ -559,7 +641,7 @@ function selectSample(index) {
   const sample = SCENE.samples[index];
   document.getElementById("failures").textContent =
     sample.failures.length ? "FAIL: " + sample.failures.join(", ") : "";
-  draw();
+  if (state.selected !== null) selectElement(state.selected); else draw();
 }
 const classesBox = document.getElementById("classes");
 SCENE.classes.forEach((name, index) => {
@@ -590,18 +672,104 @@ window.addEventListener("keydown", (event) => {
     selectSample((state.sample + 1) % SCENE.samples.length);
   if (event.key === "ArrowLeft")
     selectSample((state.sample + SCENE.samples.length - 1) % SCENE.samples.length);
+  if (event.key === "Escape") selectElement(null);
 });
+document.getElementById("ghost").addEventListener("change", (event) => {
+  state.ghost = event.target.checked; draw();
+});
+const viewsBox = document.getElementById("views");
+const PRESETS = {
+  iso: { yaw: 0.9, pitch: 0.5 }, top: { yaw: 0.0, pitch: 1.45 },
+  front: { yaw: Math.PI, pitch: 0.08 }, side: { yaw: Math.PI / 2, pitch: 0.08 },
+};
+for (const name of Object.keys(PRESETS).concat(["reset"])) {
+  const button = document.createElement("button");
+  button.textContent = name;
+  button.addEventListener("click", () => {
+    const preset = PRESETS[name] || PRESETS.iso;
+    camera.yaw = preset.yaw; camera.pitch = preset.pitch;
+    if (name === "reset") { camera.dist = radius * 1.6; camera.pan = [0, 0, 0]; }
+    draw();
+  });
+  viewsBox.appendChild(button);
+}
+function selectElement(index) {
+  state.selected = index;
+  const card = document.getElementById("selected");
+  card.hidden = index === null;
+  card.replaceChildren();
+  if (index === null) { draw(); return; }
+  const element = SCENE.elements[index];
+  const box = sampleBox(state.sample, index);
+  const text = (value) => document.createTextNode(String(value));
+  const title = document.createElement("h3"); title.append(text(element.name)); card.append(title);
+  const cls = document.createElement("div"); cls.className = "cls-name";
+  cls.append(text(SCENE.classes[element.class] + " | " + SCENE.samples[state.sample].label));
+  card.append(cls);
+  const table = document.createElement("table");
+  const head = document.createElement("tr");
+  for (const label of ["axis", "here", "nominal"]) {
+    const td = document.createElement("td"); td.append(text(label)); td.style.color = "#6b6a66"; head.append(td);
+  }
+  table.append(head);
+  ["x", "y", "z"].forEach((axis, i) => {
+    const row = document.createElement("tr");
+    const quantity = element.quantities[i];
+    const sigma = element.extents_sigma[i];
+    const nominal = element.box.extents[i].toFixed(3) + (sigma === null ? "" : " +- " + sigma.toFixed(3));
+    for (const [cell, numeric] of [[quantity ? quantity : axis + " (fixed)", false],
+                                   [box.extents[i].toFixed(3) + " m", true], [nominal + " m", true]]) {
+      const td = document.createElement("td"); td.append(text(cell));
+      if (numeric) td.className = "num"; row.append(td);
+    }
+    table.append(row);
+  });
+  card.append(table);
+  const hint = document.createElement("div"); hint.className = "cls-name";
+  hint.append(text("esc or click empty space to clear"));
+  card.append(hint);
+  draw();
+}
+function cameraFrame() {
+  const focus = [target[0] + camera.pan[0], target[1] + camera.pan[1], target[2] + camera.pan[2]];
+  const eye = [
+    focus[0] + camera.dist * Math.cos(camera.pitch) * Math.sin(camera.yaw),
+    focus[1] + camera.dist * Math.cos(camera.pitch) * Math.cos(camera.yaw),
+    focus[2] + camera.dist * Math.sin(camera.pitch)];
+  return { eye, focus };
+}
+function pick(clientX, clientY) {
+  const { eye, focus } = cameraFrame();
+  const forward = norm3(sub3(focus, eye));
+  const right = norm3(cross3(forward, [0, 0, 1]));
+  const up = cross3(right, forward);
+  const aspect = canvas.clientWidth / canvas.clientHeight, tanF = Math.tan(0.45);
+  const ndcX = (clientX / canvas.clientWidth) * 2 - 1, ndcY = 1 - (clientY / canvas.clientHeight) * 2;
+  const dir = norm3([
+    forward[0] + right[0] * ndcX * aspect * tanF + up[0] * ndcY * tanF,
+    forward[1] + right[1] * ndcX * aspect * tanF + up[1] * ndcY * tanF,
+    forward[2] + right[2] * ndcX * aspect * tanF + up[2] * ndcY * tanF]);
+  let best = null, bestT = Infinity;
+  SCENE.elements.forEach((element, index) => {
+    if (state.hidden.has(element.class)) return;
+    const t = rayBoxDistance(eye, dir, sampleBox(state.sample, index));
+    if (t !== null && t < bestT) { bestT = t; best = index; }
+  });
+  selectElement(best);
+}
 
 // -- input: orbit / pan / zoom ---------------------------------------------
 let dragging = null;
 canvas.addEventListener("pointerdown", (event) => {
-  dragging = { x: event.clientX, y: event.clientY, pan: event.shiftKey || event.button === 2 };
+  dragging = { x: event.clientX, y: event.clientY, pan: event.shiftKey || event.button === 2,
+               startX: event.clientX, startY: event.clientY, moved: 0 };
   canvas.setPointerCapture(event.pointerId);
 });
 canvas.addEventListener("pointermove", (event) => {
   if (!dragging) return;
   const dx = event.clientX - dragging.x, dy = event.clientY - dragging.y;
   dragging.x = event.clientX; dragging.y = event.clientY;
+  dragging.moved += Math.abs(dx) + Math.abs(dy);
   if (dragging.pan) {
     const scale = camera.dist * 0.0016;
     const sy = Math.sin(camera.yaw), cy = Math.cos(camera.yaw);
@@ -613,7 +781,10 @@ canvas.addEventListener("pointermove", (event) => {
   }
   draw();
 });
-canvas.addEventListener("pointerup", () => { dragging = null; });
+canvas.addEventListener("pointerup", (event) => {
+  if (dragging && dragging.moved < 4 && event.button === 0) pick(event.clientX, event.clientY);
+  dragging = null;
+});
 canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
@@ -644,11 +815,7 @@ function draw() {
   gl.enable(gl.DEPTH_TEST);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  const eye = [
-    target[0] + camera.pan[0] + camera.dist * Math.cos(camera.pitch) * Math.sin(camera.yaw),
-    target[1] + camera.pan[1] + camera.dist * Math.cos(camera.pitch) * Math.cos(camera.yaw),
-    target[2] + camera.pan[2] + camera.dist * Math.sin(camera.pitch)];
-  const focus = [target[0] + camera.pan[0], target[1] + camera.pan[1], target[2] + camera.pan[2]];
+  const { eye, focus } = cameraFrame();
   const proj = perspective(0.9, canvas.width / canvas.height, 0.05, radius * 30);
   const view = lookAt(eye, focus, [0, 0, 1]);
 
@@ -662,15 +829,30 @@ function draw() {
   gl.enableVertexAttribArray(linePosition);
   gl.drawArrays(gl.LINES, 0, grid.count);
 
-  const { buffer, ranges } = buildSample(state.sample);
   gl.useProgram(SPLAT_PROGRAM);
   gl.uniformMatrix4fv(gl.getUniformLocation(SPLAT_PROGRAM, "uProj"), false, proj);
   gl.uniformMatrix4fv(gl.getUniformLocation(SPLAT_PROGRAM, "uView"), false, view);
   gl.uniform1f(gl.getUniformLocation(SPLAT_PROGRAM, "uSigma"), state.sigma);
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  bindSplatAttributes();
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  const ghostLocation = gl.getUniformLocation(SPLAT_PROGRAM, "uGhost");
+  if (state.sample !== 0 && state.ghost) {
+    // The nominal belief, greyed and faint, so a realization's drift is legible.
+    const nominalBuilt = buildSample(0);
+    gl.uniform1f(ghostLocation, 1.0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, nominalBuilt.buffer);
+    bindSplatAttributes();
+    gl.depthMask(false);
+    for (const range of nominalBuilt.ranges) {
+      if (range.transparent || state.hidden.has(range.class)) continue;
+      gl.drawArrays(gl.TRIANGLES, range.start, range.count);
+    }
+    gl.depthMask(true);
+  }
+  const { buffer, ranges } = buildSample(state.sample);
+  gl.uniform1f(ghostLocation, 0.0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  bindSplatAttributes();
   for (const pass of [false, true]) {
     gl.depthMask(!pass);
     for (const range of ranges) {
@@ -680,20 +862,15 @@ function draw() {
   }
   gl.depthMask(true);
 
-  if (proposals && state.overlay) {
-    // The decided geometry must stay visible even inside a wall it crosses.
-    gl.disable(gl.DEPTH_TEST);
-    gl.useProgram(LINE_PROGRAM);
-    gl.uniformMatrix4fv(gl.getUniformLocation(LINE_PROGRAM, "uProj"), false, proj);
-    gl.uniformMatrix4fv(gl.getUniformLocation(LINE_PROGRAM, "uView"), false, view);
-    gl.uniform4f(gl.getUniformLocation(LINE_PROGRAM, "uColor"),
-                 DECISION_RGB[0], DECISION_RGB[1], DECISION_RGB[2], 1);
-    gl.bindBuffer(gl.ARRAY_BUFFER, proposals.buffer);
-    gl.vertexAttribPointer(linePosition, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(linePosition);
-    gl.drawArrays(gl.LINES, 0, proposals.count);
-    gl.enable(gl.DEPTH_TEST);
+  // Decided and selected geometry stays visible even inside a wall.
+  gl.disable(gl.DEPTH_TEST);
+  if (proposals && state.overlay) drawLines(proposals, DECISION_RGB, proj, view);
+  if (state.selected !== null) {
+    const outline = lineBuffer(boxEdges(sampleBox(state.sample, state.selected), []));
+    drawLines(outline, [0.11, 0.11, 0.10], proj, view);
+    gl.deleteBuffer(outline.buffer);
   }
+  gl.enable(gl.DEPTH_TEST);
 }
 window.addEventListener("resize", draw);
 selectSample(0);
