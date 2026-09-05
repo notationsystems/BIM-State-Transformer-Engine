@@ -669,7 +669,9 @@ def _audit_parsed(
                 )
             )
     try:
-        module = lower_ifc(file, source=source)
+        from gat.source_identity import bind_source_content
+
+        module = bind_source_content(lower_ifc(file, source=source), source_sha256)
         lowering = StageAudit(
             AuditStatus.PASS,
             details=(("entity_count", len(module.entities)), ("relationship_count", len(module.rels))),
