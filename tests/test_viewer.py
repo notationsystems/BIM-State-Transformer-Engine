@@ -311,6 +311,99 @@ class DecisionOverlayTests(unittest.TestCase):
             self.assertEqual(cli_main(["view", MODEL, "-o", out, "--request", request_path]), 2)
 
 
+class FrameTests(unittest.TestCase):
+    """Projections state their frame and behave consistently under a change of it."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        from gat.geometry.stateio import derive_scene
+
+        cls.world = GatSession.load_ifc(MODEL).world
+        cls.scene = derive_scene(cls.world, spacing=0.75)
+
+    @staticmethod
+    def transformed(scene, angle=0.0, shift=(0.0, 0.0, 0.0), scale=1.0):
+        """The same scene expressed in another frame: rotated about +Z, then
+        scaled (a unit change), then translated."""
+        from types import SimpleNamespace
+
+        import numpy as np
+
+        from gat.geometry.gaussianize import OrientedBox, rot_z
+
+        rotation = rot_z(angle)
+        elements = []
+        for element in scene.elements:
+            origin = rotation @ np.asarray(element.box.origin, dtype=float) * scale + np.asarray(shift)
+            box = OrientedBox(
+                tuple(float(v) for v in origin),
+                element.box.angle + angle,
+                tuple(float(v) * scale for v in element.box.extents),
+            )
+            elements.append(SimpleNamespace(entity_id=element.entity_id, box=box))
+        return SimpleNamespace(elements=tuple(elements))
+
+    def test_frame_record_states_what_the_adapter_recorded(self) -> None:
+        from gat.geometry.viewer import frame_record
+
+        frame = frame_record(self.world)
+        self.assertEqual(frame["id"], "model")
+        self.assertIsNone(frame["parent"])
+        self.assertIsNone(frame["crs"])
+        self.assertEqual(frame["units"], "m")
+        self.assertEqual(frame["source_unit"], "METRE")
+        self.assertEqual(frame["scale_to_metres"], 1.0)
+        self.assertEqual((frame["up"], frame["handedness"]), ("+Z", "right"))
+        self.assertIn("dimensions only", frame["uncertainty"])
+        payload = viewer_payload(self.world, n=0)
+        self.assertEqual(payload["frame"], frame)
+
+    def test_box_center_agrees_with_the_engine(self) -> None:
+        import numpy as np
+
+        from gat.geometry.viewer import _box_center
+
+        for element in self.scene.elements:
+            np.testing.assert_allclose(_box_center(element.box), element.box.center(), atol=1e-12)
+
+    def test_explode_offsets_are_translation_invariant(self) -> None:
+        from gat.geometry.viewer import explode_offsets
+
+        base = explode_offsets(self.world, self.scene)
+        moved = explode_offsets(self.world, self.transformed(self.scene, shift=(12.5, -3.0, 2.0)))
+        self.assertEqual(base, moved)
+
+    def test_explode_offsets_rotate_with_the_scene(self) -> None:
+        import numpy as np
+
+        from gat.geometry.gaussianize import rot_z
+        from gat.geometry.viewer import explode_offsets
+
+        angle = 0.7
+        base = np.asarray(explode_offsets(self.world, self.scene))
+        rotated = np.asarray(explode_offsets(self.world, self.transformed(self.scene, angle=angle)))
+        expected = base @ rot_z(angle).T
+        np.testing.assert_allclose(rotated, expected, atol=2e-3)
+
+    def test_explode_offsets_scale_with_the_unit(self) -> None:
+        import numpy as np
+
+        from gat.geometry.viewer import explode_offsets
+
+        base = np.asarray(explode_offsets(self.world, self.scene))
+        in_mm = np.asarray(explode_offsets(self.world, self.transformed(self.scene, scale=1000.0)))
+        np.testing.assert_allclose(in_mm / 1000.0, base, atol=2e-3)
+
+    def test_display_frame_change_is_not_evidence(self) -> None:
+        """Nothing frame-related touches the world: same digest, same belief."""
+        from gat.geometry.viewer import explode_offsets, frame_record
+
+        before = self.world.digest()
+        explode_offsets(self.world, self.transformed(self.scene, angle=1.1, shift=(3, 4, 5), scale=0.001))
+        frame_record(self.world)
+        self.assertEqual(self.world.digest(), before)
+
+
 class ViewerHtmlTests(unittest.TestCase):
     def test_html_is_self_contained_and_offline(self) -> None:
         world = GatSession.load_ifc(MODEL).world
@@ -342,6 +435,8 @@ class ViewerHtmlTests(unittest.TestCase):
 
         world = GatSession.load_ifc(MODEL).world
         html = render_viewer_html(viewer_payload(world, n=0))
+        self.assertIn('"frame":{"id":"model"', html)
+        self.assertIn("SCENE.frame.uncertainty", html)
         for phrase in ("uExplode * aExplode", 'id="explode"', "a displacement is not a position",
                        "displacedBox(state.sample, index)", "for reading; not a position"):
             self.assertIn(phrase, html)

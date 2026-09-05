@@ -131,6 +131,45 @@ piece the corpus could not fully represent is outlined in its status
 colour; its fill keeps the identity hue, because an audit status describes
 the corpus, not a verdict on the asset.
 
+## Frames: stated today, read tomorrow
+
+Every projection draws in a frame it states. `frame_record(world)` reads
+what the adapter recorded — the IFC length unit and its scale to metres,
+the placement convention of the lowering (corner-origin box, yaw about
++Z) — and adds the viewer's own convention (right-handed, Z up, metres,
+the same the OpenUSD carrier declares), the absence of a CRS, and the
+engine's current limit: **placements are exact metadata, so the belief
+carries dimensions only**. The record is embedded in the scene, shown in
+the viewer's meta line and the workbench identity strip, and is the source
+of the `frame` field of the STRUCTURE and STATE specs. A frame change on
+the display side is never evidence: the tests assert that computing frame
+records and reading offsets in other frames leaves the world digest
+untouched.
+
+Projections must behave consistently under a change of frame, and the
+frontend tests that on its own layer: EXPLODE offsets are invariant under
+translation, rotate with the scene, and scale with the unit; the box
+centre the viewer uses agrees with the engine's. GRAPH is frame-free by
+construction. These are the frontend's share of the coordinate-
+transformation equivalence tests; the engine's share (nested placements,
+pose uncertainty, physical-result equivalence within a declared tolerance)
+is the milestone the engine team owns.
+
+### What the viewer will read when the engine carries frames and pose
+
+This is a consumer's statement of the fields the surfaces will draw, not a
+design of the engine's representation. It exists so the two can be shaped
+together.
+
+| Record | Fields the surfaces read | How it will be drawn |
+|---|---|---|
+| frame | `id`, `parent`, `transform` (rigid, declared convention), `units`, `up`, `handedness`, `crs`, `epoch` | identity strip and meta line; MAP/GLOBE availability flips only when `crs` is present |
+| pose belief per element | position mean and 3×3 covariance in the parent frame; a rotation uncertainty in a representation that respects rotation geometry (e.g. a yaw variance for gravity-aligned cases), with correlations to dimensions where the engine carries them | a position ellipsoid at the box centre and a yaw fan, distinct from the dimensional ellipsoids; the inspection card separates "loose in place" from "loose in size" |
+| residual | observation id, `VarId` or pose component, predicted mean ± sigma, measured value ± sigma, standardised residual, calibration id, frame id, independence flag | a CALIBRATION report: coverage per quantity class and frame, standardised-residual table, and markers on the pieces in STRUCTURE; a residual from a scan aligned to the model is drawn as association, never as independent evidence |
+
+Nothing above is rendered until the engine emits it; the surfaces will
+refuse a pose or residual record whose frame id they cannot resolve.
+
 ## Rules that hold in every mode
 
 1. **Projection never mutates its source.** The workbench renders and
