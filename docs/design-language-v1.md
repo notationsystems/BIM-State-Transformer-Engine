@@ -128,9 +128,18 @@ first instances of those modes over one engine, and should be read as such:
 | Mode | Surface today | Engine role it fills |
 |---|---|---|
 | STRUCTURE | `gat view` (belief ellipsoids, realizations, decision overlay) | the Three.js seat, currently a self-contained WebGL renderer |
-| STATE / EVIDENCE | `gat report` pages (decision, evidence, assurance cards) | report class |
-| TIME / EVIDENCE | `gat ledger` timeline | report class |
+| GRAPH | `gat workbench` GRAPH panel (IR relationship graph, typed edges, IFC provenance) | instrument |
+| STATE | `gat workbench` STATE panel (per-entity quantities: mean ± sigma, raw / derived) | instrument |
+| EVIDENCE | `gat report` pages (decision, evidence, assurance cards) | report class |
+| TIME | `gat ledger` timeline | report class |
 | COMPLEXITY | `gat audit --html` (what the corpus can and cannot represent) | report class |
+| MAP / GLOBE | reserved; declared *unavailable* with the reason (no coordinate reference system is lowered) | kepler.gl / CesiumJS seats, not yet filled |
+
+`gat workbench` composes all eight behind one mode toolbar in one offline
+file, with a single selection identity (`EntityId`) shared by every mode
+and a `ProjectionSpec` per mode that states its source, transformation,
+meaning, information loss, identity, frame and time. The contract is
+`docs/projection-spec-v1.md`.
 
 Three rules carry across every mode: projection never mutates its source;
 identity survives representation (the same digest names the same world in
@@ -193,6 +202,20 @@ assurance flags render `no` in plain sight and audit statuses like
   path form when it names the same file; a digest mismatch is refused with
   that hint rather than silently re-bound. The HUD card repeats the report's headline badge, reasons,
   risk table, next evidence, and footers.
+* `gat workbench model.ifc -o workbench.html [--decision … --request … --ledger … --no-audit]`
+  — the Notation Workbench: the eight modes above behind one toolbar
+  (keys 1–8), the viewer embedded in a sandboxed frame as STRUCTURE, the
+  relationship graph as GRAPH, the belief per entity as STATE, and the
+  report pages as TIME / EVIDENCE / COMPLEXITY. Selecting an element in
+  any mode selects it everywhere by `EntityId`; the identity strip shows
+  name and id, the URL hash carries `#MODE/EntityId`, and report panels
+  mark exact-name mentions of the selection. Modes with nothing bound are
+  shown as *empty* with the flag that fills them; MAP and GLOBE are shown
+  as *unavailable* with the reason. Nothing is hidden and nothing is
+  faked. Frame and page exchange only ids and the world digest
+  (`gat-workbench-message-v1`); a message from another world is ignored.
+  `python -m gat.demo.workbench out/` builds the worked clearance review
+  (crossing duct vs `Wall-Party`) end to end and asserts the page.
 
 ## Non-goals
 
