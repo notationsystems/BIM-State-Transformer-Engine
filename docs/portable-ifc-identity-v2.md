@@ -61,10 +61,14 @@ to v2 worlds, and old signatures do not sign newly imported worlds. Continue
 from the verified historical snapshot/carrier when retaining that evidence
 chain is required. Unknown import versions fail closed.
 
-Viewer/workbench follow-up remains with Claude: remove the path-form workaround
-for new v2 assessments and use compile-trace provenance when displaying the
-original locator. Keep an explicit legacy route if supporting v1 IFC re-import.
-Report bodies and interactive instruments remain separate surfaces.
+Viewer and Workbench load v2 inputs through the supplied model path, without
+substituting the request's path. A copied input can render its assessment even
+after the original path disappears. For v1, `--request` must explicitly carry
+`state.identity_version=1` and its original path must still name the same file;
+the accompanying IFC audit uses v1 as well. No fallback silently rebinds a
+legacy assessment to a relocated copy. Original locators remain available in
+compile-trace provenance. Report bodies and interactive instruments remain
+separate surfaces.
 
 ## Qualification envelope
 
