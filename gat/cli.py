@@ -8,7 +8,7 @@
     gat sample  model.ifc [--n 500]              realization / violation rates
     gat report  response.json [--html]           render a gat-headless decision
     gat ledger  ledger.json [--html]             render an execution-ledger timeline
-    gat view    model.ifc -o viewer.html         offline 3D viewer of belief + samples
+    gat view    model.ifc -o viewer.html         offline 3D viewer (+ --decision overlay)
 
 Every command is deterministic and never mutates the model.  ``--json``
 (where offered) switches to machine-readable output.
@@ -94,9 +94,21 @@ def _run_report(args: argparse.Namespace) -> int:
 
 
 def _run_view(args: argparse.Namespace) -> int:
-    from gat.geometry.viewer import export_viewer_html
+    from gat.geometry.viewer import decision_overlay, export_viewer_html
 
     session = _load(args.model)
+    decision = None
+    if args.decision:
+        with open(args.decision, "r", encoding="utf-8") as handle:
+            response = json.load(handle)
+        request = None
+        if args.request:
+            with open(args.request, "r", encoding="utf-8") as handle:
+                request = json.load(handle)
+        decision = decision_overlay(session.world, response, request)
+    elif args.request:
+        print("gat view: --request requires --decision", file=sys.stderr)
+        return 2
     count = export_viewer_html(
         session.world,
         args.output,
@@ -104,8 +116,10 @@ def _run_view(args: argparse.Namespace) -> int:
         seed=args.seed,
         spacing=args.spacing,
         model_name=args.model,
+        decision=decision,
     )
-    print(f"wrote {args.output}: offline viewer with {count} realizations")
+    suffix = f" + decision {decision['disposition']}" if decision else ""
+    print(f"wrote {args.output}: offline viewer with {count} realizations{suffix}")
     return 0
 
 
@@ -426,6 +440,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--variations", type=int, default=8)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--spacing", type=float, default=0.75)
+    p.add_argument(
+        "--decision",
+        help="gat-headless response to overlay (must be evaluated on this model)",
+    )
+    p.add_argument(
+        "--request",
+        help="the matching gat-headless request; draws proposed clearance geometry",
+    )
     p.set_defaults(handler=_run_view)
 
     return parser

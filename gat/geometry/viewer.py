@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Mapping
 
 import numpy as np
 
@@ -25,8 +26,11 @@ from gat.engine.executor import World
 from gat.engine.sampling import sample_worlds
 from gat.engine.verify import Status, run_invariants
 from gat.geometry.stateio import derive_scene
+from gat.report import decode_response, disposition_hex
 
 VIEWER_SCENE_FORMAT = "gat-viewer-scene-v1"
+REQUEST_FORMAT = "gat-headless-request-v1"
+_OVERLAY_OPERATIONS = frozenset({"acceptance", "beam_assurance", "change_impact"})
 
 #: Identity hues per IFC class (muted architectural neutrals) and the
 #: alpha its splats render with; unknown classes fall back to "other".
@@ -65,14 +69,108 @@ def _sample_entry(world: World, label: str, spacing: float) -> dict[str, object]
     }
 
 
+def decision_overlay(
+    world: World,
+    response: Mapping[str, object],
+    request: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Bind a headless decision to this world for drawing, fail-closed.
+
+    The response must have been evaluated on exactly the loaded world (its
+    world digest, or for beam assurance its prior-world digest, must equal
+    ``world.digest()``); an optional request must carry the same request id
+    and operation, and contributes the proposed geometry the response does
+    not echo.  Anything that disagrees is refused, never drawn.
+    """
+    report = decode_response(response)
+    if report.operation not in _OVERLAY_OPERATIONS:
+        raise ValueError(
+            f"viewer overlays render decisions, not {report.operation!r} documents"
+        )
+    result = response["result"]
+    loaded = world.digest()
+    evaluated = {report.world_digest}
+    if report.operation == "beam_assurance":
+        evaluated.add(result["transition"]["prior_world_digest"])
+    if loaded not in evaluated:
+        raise ValueError("decision was evaluated on a different world than the model")
+
+    subjects: list[str] = []
+    risks: list[dict[str, object]] = []
+    requests: list[dict[str, str]] = []
+    if report.operation == "acceptance":
+        for check in result["checks"]:
+            # Only elements the case could not clear at its confidence are
+            # painted with the disposition; the rest stay identity-coloured.
+            uncleared_above = 1.0 - float(check["confidence"])
+            for risk in check.get("details", {}).get("risks", []):
+                element = str(risk["element"])
+                if float(risk["p_violates"]) > uncleared_above and element not in subjects:
+                    subjects.append(element)
+                risks.append(
+                    {
+                        "check_id": check["check_id"],
+                        "element": element,
+                        "clearance_mean": float(risk["clearance_mean"]),
+                        "clearance_sigma": float(risk["clearance_sigma"]),
+                        "p_violates": float(risk["p_violates"]),
+                    }
+                )
+        requests = [
+            {"action": str(item["action"]), "target": str(item["target"])}
+            for item in result["evidence_requests"]
+        ]
+    elif report.operation == "beam_assurance":
+        subjects = [str(result["subject"])]
+    else:
+        subjects = [str(name) for name in result["impacted_entities"]]
+
+    proposals: list[dict[str, object]] = []
+    if request is not None:
+        if request.get("format") != REQUEST_FORMAT:
+            raise ValueError(f"unsupported request format {request.get('format')!r}")
+        if request.get("request_id") != report.request_id:
+            raise ValueError("request and response ids differ")
+        if request.get("operation") != report.operation:
+            raise ValueError("request and response operations differ")
+        payload = request.get("payload", {})
+        for check in payload.get("checks", []) if isinstance(payload, Mapping) else []:
+            if check.get("kind") != "clearance":
+                continue
+            proposal = check["proposal"]
+            proposals.append(
+                {
+                    "label": str(check.get("label") or check["check_id"]),
+                    "origin": [float(v) for v in proposal["origin"]],
+                    "angle": float(proposal["angle"]),
+                    "extents": [float(v) for v in proposal["extents"]],
+                }
+            )
+
+    return {
+        "headline": report.headline,
+        "disposition": report.disposition,
+        "color": disposition_hex(report.disposition),
+        "subline": report.subline,
+        "reasons": list(report.notes),
+        "requests": requests,
+        "subjects": subjects,
+        "risks": risks,
+        "proposals": proposals,
+        "footers": list(report.footers),
+    }
+
+
 def viewer_payload(
     world: World,
     n: int = 8,
     seed: int = 0,
     spacing: float = 0.75,
     model_name: str = "",
+    decision: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
-    """Build the embedded scene document: nominal belief + ``n`` samples.
+    """Build the embedded scene document: nominal belief + ``n`` samples,
+    optionally carrying one bound decision overlay.
 
     Deterministic: same world + n + seed + spacing => identical payload.
     """
@@ -109,6 +207,7 @@ def viewer_payload(
         "classes": classes,
         "elements": elements,
         "samples": samples,
+        "decision": dict(decision) if decision is not None else None,
     }
 
 
@@ -119,10 +218,16 @@ def export_viewer_html(
     seed: int = 0,
     spacing: float = 0.75,
     model_name: str = "",
+    decision: Mapping[str, object] | None = None,
 ) -> int:
     """Write the viewer HTML; returns the number of embedded samples."""
     payload = viewer_payload(
-        world, n=n, seed=seed, spacing=spacing, model_name=model_name
+        world,
+        n=n,
+        seed=seed,
+        spacing=spacing,
+        model_name=model_name,
+        decision=decision,
     )
     encoded = json.dumps(payload, separators=(",", ":")).replace("</", "<\\/")
     document = _TEMPLATE.replace("__GAT_SCENE_JSON__", encoded)
@@ -159,16 +264,25 @@ label.cls .swatch { display: inline-block; width: 0.7em; height: 0.7em;
 #sigma { width: 100%; }
 #hud footer { margin-top: 0.7rem; color: #6b6a66; font-size: 0.72rem; }
 #hud footer p { margin: 0.15rem 0; }
+#decision { border-left: 4px solid #999; padding: 0.4rem 0.6rem; margin: 0.4rem 0 0.2rem;
+  background: #faf9f6; border-radius: 0 8px 8px 0; font-size: 0.82rem; }
+#decision .badge { display: inline-block; color: #fff; border-radius: 999px;
+  padding: 0 0.55em; font-weight: 600; margin-right: 0.35em; }
+#decision p { margin: 0.25rem 0; }
+#decision table { border-collapse: collapse; width: 100%; font-size: 0.76rem; margin-top: 0.3rem; }
+#decision td { padding: 0.1rem 0.4rem 0.1rem 0; border-bottom: 1px solid #ece9e2; vertical-align: top; }
+#decision label { display: block; margin-top: 0.35rem; font-size: 0.78rem; }
 </style></head><body>
 <canvas id="gl"></canvas>
 <div id="hud">
   <h1>GAT as-built viewer</h1>
   <div class="meta" id="meta"></div>
+  <div id="decision" hidden></div>
   <h2>Realization</h2>
   <div id="samples"></div>
   <div id="failures"></div>
-  <h2>Uncertainty envelope <span id="sigmaValue">1.0&sigma;</span></h2>
-  <input id="sigma" type="range" min="0.5" max="3" step="0.25" value="1">
+  <h2>Uncertainty envelope <span id="sigmaValue">1.8&sigma;</span></h2>
+  <input id="sigma" type="range" min="0.5" max="3" step="0.25" value="1.75">
   <h2>Elements</h2>
   <div id="classes"></div>
   <footer>
@@ -260,24 +374,33 @@ function hexToRgb(hex) {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
 }
 
+// -- decision overlay (bound server-side to this exact world) --------------
+const DECISION = SCENE.decision || null;
+const DECISION_SUBJECTS = new Set(DECISION ? DECISION.subjects : []);
+const DECISION_RGB = DECISION ? hexToRgb(DECISION.color) : null;
+
 // -- per-sample geometry (built lazily, grouped by element class) ----------
 const FLOATS = 13; // center 3 + offset 3 + normal 3 + color 4
 const built = new Map();
 function buildSample(index) {
-  if (built.has(index)) return built.get(index);
+  const overlay = DECISION !== null && state.overlay;
+  const key = index + (overlay ? ":decision" : "");
+  if (built.has(key)) return built.get(key);
   const sample = SCENE.samples[index];
   const count = sample.element.length;
   const order = Array.from({ length: count }, (_, i) => i);
   const classOf = (i) => SCENE.elements[sample.element[i]].class;
-  const alphaOf = (i) => SCENE.elements[sample.element[i]].alpha;
+  const tinted = (i) => overlay && DECISION_SUBJECTS.has(SCENE.elements[sample.element[i]].name);
+  const alphaOf = (i) => tinted(i) ? 0.96 : SCENE.elements[sample.element[i]].alpha;
   order.sort((a, b) => (alphaOf(b) - alphaOf(a)) || (classOf(a) - classOf(b)) || (a - b));
   const data = new Float32Array(count * SPHERE.length * FLOATS);
   const ranges = []; // {class, transparent, start, count} in vertices
   let cursor = 0;
   for (const i of order) {
     const element = SCENE.elements[sample.element[i]];
-    const rgb = hexToRgb(element.color);
-    const transparent = element.alpha < 0.5;
+    const rgb = tinted(i) ? DECISION_RGB : hexToRgb(element.color);
+    const alpha = alphaOf(i);
+    const transparent = alpha < 0.5;
     const c = sample.centers.slice(i * 3, i * 3 + 3);
     const A = sample.axes.slice(i * 9, i * 9 + 9); // row-major world map
     const s0 = Math.hypot(A[0], A[3], A[6]) || 1e-9;
@@ -297,7 +420,7 @@ function buildSample(index) {
         (A[3]*u[0])/(s0*s0) + (A[4]*u[1])/(s1*s1) + (A[5]*u[2])/(s2*s2),
         (A[6]*u[0])/(s0*s0) + (A[7]*u[1])/(s1*s1) + (A[8]*u[2])/(s2*s2)]);
       data.set([c[0], c[1], c[2], off[0], off[1], off[2], n[0], n[1], n[2],
-                rgb[0], rgb[1], rgb[2], element.alpha], cursor);
+                rgb[0], rgb[1], rgb[2], alpha], cursor);
       cursor += FLOATS;
     }
     ranges[ranges.length - 1].count += SPHERE.length;
@@ -306,9 +429,30 @@ function buildSample(index) {
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
   const entry = { buffer, ranges };
-  built.set(index, entry);
+  built.set(key, entry);
   return entry;
 }
+
+// Proposed clearance geometry: corner-origin yawed boxes as 12 edges each.
+const proposals = (() => {
+  if (!DECISION || !DECISION.proposals.length) return null;
+  const lines = [];
+  for (const box of DECISION.proposals) {
+    const c = Math.cos(box.angle), s = Math.sin(box.angle);
+    const corner = (fx, fy, fz) => {
+      const lx = fx * box.extents[0], ly = fy * box.extents[1], lz = fz * box.extents[2];
+      return [box.origin[0] + c * lx - s * ly, box.origin[1] + s * lx + c * ly, box.origin[2] + lz];
+    };
+    const v = [corner(0,0,0), corner(1,0,0), corner(1,1,0), corner(0,1,0),
+               corner(0,0,1), corner(1,0,1), corner(1,1,1), corner(0,1,1)];
+    for (const [a, b] of [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]])
+      lines.push(...v[a], ...v[b]);
+  }
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lines), gl.STATIC_DRAW);
+  return { buffer, count: lines.length / 3 };
+})();
 
 // -- scene bounds and camera ----------------------------------------------
 const nominal = SCENE.samples[0];
@@ -338,14 +482,66 @@ const grid = (() => {
 })();
 
 // -- state and HUD ---------------------------------------------------------
+// sqrt(3) sigma is where moment-matched tiles exactly fill their boxes
+// (Var(U[-h,h]) = h^2/3), so the default envelope reproduces the solids.
 const state = {
   sample: 0,
-  sigma: 1,
+  sigma: 1.75,
+  overlay: true,
   hidden: new Set(SCENE.classes.map((name, i) => name === "IfcSpace" ? i : -1).filter((i) => i >= 0)),
 };
 const meta = document.getElementById("meta");
 meta.textContent = (SCENE.model ? SCENE.model + " | " : "") +
   "world " + SCENE.world_digest.slice(0, 12) + "... | seed " + SCENE.seed;
+
+if (DECISION) {
+  const card = document.getElementById("decision");
+  card.hidden = false;
+  card.style.borderLeftColor = DECISION.color;
+  const text = (value) => document.createTextNode(String(value));
+  const headline = document.createElement("p");
+  const badge = document.createElement("span");
+  badge.className = "badge";
+  badge.style.background = DECISION.color;
+  badge.append(text(DECISION.disposition));
+  headline.append(badge, text(DECISION.headline.replace(DECISION.disposition + ": ", "")));
+  card.append(headline);
+  const subline = document.createElement("p");
+  subline.style.color = "#6b6a66";
+  subline.append(text(DECISION.subline));
+  card.append(subline);
+  for (const reason of DECISION.reasons) {
+    const p = document.createElement("p"); p.append(text(reason)); card.append(p);
+  }
+  if (DECISION.risks.length) {
+    const table = document.createElement("table");
+    for (const risk of DECISION.risks) {
+      const row = document.createElement("tr");
+      for (const cell of [risk.element,
+                          risk.clearance_mean.toFixed(3) + " +- " + risk.clearance_sigma.toFixed(3) + " m",
+                          "P(viol) " + risk.p_violates.toFixed(4)]) {
+        const td = document.createElement("td"); td.append(text(cell)); row.append(td);
+      }
+      table.append(row);
+    }
+    card.append(table);
+  }
+  for (const request of DECISION.requests) {
+    const p = document.createElement("p");
+    p.append(text("next evidence: " + request.action + " " + request.target));
+    card.append(p);
+  }
+  const toggle = document.createElement("label");
+  const input = document.createElement("input");
+  input.type = "checkbox"; input.checked = true;
+  input.addEventListener("change", () => { state.overlay = input.checked; draw(); });
+  toggle.append(input, text(" highlight decision subjects" +
+    (DECISION.proposals.length ? " and proposed geometry" : "")));
+  card.append(toggle);
+  for (const footer of DECISION.footers) {
+    const p = document.createElement("p"); p.style.color = "#6b6a66"; p.append(text(footer)); card.append(p);
+  }
+}
 
 const samplesBox = document.getElementById("samples");
 SCENE.samples.forEach((sample, index) => {
@@ -483,6 +679,21 @@ function draw() {
     }
   }
   gl.depthMask(true);
+
+  if (proposals && state.overlay) {
+    // The decided geometry must stay visible even inside a wall it crosses.
+    gl.disable(gl.DEPTH_TEST);
+    gl.useProgram(LINE_PROGRAM);
+    gl.uniformMatrix4fv(gl.getUniformLocation(LINE_PROGRAM, "uProj"), false, proj);
+    gl.uniformMatrix4fv(gl.getUniformLocation(LINE_PROGRAM, "uView"), false, view);
+    gl.uniform4f(gl.getUniformLocation(LINE_PROGRAM, "uColor"),
+                 DECISION_RGB[0], DECISION_RGB[1], DECISION_RGB[2], 1);
+    gl.bindBuffer(gl.ARRAY_BUFFER, proposals.buffer);
+    gl.vertexAttribPointer(linePosition, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(linePosition);
+    gl.drawArrays(gl.LINES, 0, proposals.count);
+    gl.enable(gl.DEPTH_TEST);
+  }
 }
 window.addEventListener("resize", draw);
 selectSample(0);
