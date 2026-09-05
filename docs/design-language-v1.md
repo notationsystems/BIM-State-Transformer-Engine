@@ -116,6 +116,31 @@ complete chain before rendering begins); and timelines longer than 50
 events elide the middle explicitly — first 5, a marked gap, last 45 —
 never silently.
 
+## Projection instruments and Workbench modes
+
+The platform synthesis names a projection triad — kepler.gl for analytical
+geography (*where is the pattern?*), CesiumJS for geodetic reality (*where
+does it exist?*), Three.js for computational structure (*how is it
+constituted?*) — behind Workbench modes: MAP, GLOBE, STRUCTURE, GRAPH,
+STATE, TIME, EVIDENCE, COMPLEXITY. The surfaces in this repository are the
+first instances of those modes over one engine, and should be read as such:
+
+| Mode | Surface today | Engine role it fills |
+|---|---|---|
+| STRUCTURE | `gat view` (belief ellipsoids, realizations, decision overlay) | the Three.js seat, currently a self-contained WebGL renderer |
+| STATE / EVIDENCE | `gat report` pages (decision, evidence, assurance cards) | report class |
+| TIME / EVIDENCE | `gat ledger` timeline | report class |
+| COMPLEXITY | `gat audit --html` (what the corpus can and cannot represent) | report class |
+
+Three rules carry across every mode: projection never mutates its source;
+identity survives representation (the same digest names the same world in
+every view); and visual adjacency is never evidence — a layout, a colour,
+or a proximity on screen proposes nothing to the corpus. The "knowledge
+debugger" intent — make missing provenance, unresolved identity, and
+contradiction *visible* rather than hidden — is already the reason
+assurance flags render `no` in plain sight and audit statuses like
+`NEEDS_GEOMETRY_DERIVATION` are accented, not filtered out.
+
 ## Surfaces
 
 * `gat report response.json` — terminal rendering of any of the four
