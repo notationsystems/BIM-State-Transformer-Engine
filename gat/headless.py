@@ -104,13 +104,15 @@ def _load_session(
     _fields(
         state,
         {"kind", "path"},
-        {"require_signature"},
+        {"require_signature", "identity_version"},
     )
     kind = _string(state["kind"], "state.kind")
     path = _string(state["path"], "state.path")
     if kind == "ifc":
         _reject_trust_options(state, kind)
-        return GatSession.load_ifc(path)
+        return GatSession.load_ifc(path, identity_version=state.get("identity_version", 2))
+    if "identity_version" in state:
+        raise ValueError("state.identity_version is only valid for IFC imports")
     if kind == "snapshot":
         _reject_trust_options(state, kind)
         return GatSession.load_snapshot(path)

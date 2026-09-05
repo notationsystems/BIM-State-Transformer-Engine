@@ -256,7 +256,7 @@ class DecisionOverlayTests(unittest.TestCase):
         self.assertEqual(overlay["disposition"], "VIOLATED")
         self.assertEqual(overlay["subjects"], ["Beam-B1"])
 
-    def test_cli_loads_model_through_the_request_path_form(self) -> None:
+    def test_cli_binds_content_identity_across_request_path_forms(self) -> None:
         import json
 
         from gat.headless import handle_request
@@ -279,11 +279,11 @@ class DecisionOverlayTests(unittest.TestCase):
                           "--decision", response_path, "--request", request_path]),
                 0,
             )
-            # without the request there is nothing to match against: refused with a hint
+            # Content identity also binds without a request-path workaround.
             self.assertEqual(
                 cli_main(["view", MODEL, "-o", out, "--variations", "0",
                           "--decision", response_path]),
-                2,
+                0,
             )
 
     def test_cli_embeds_the_overlay(self) -> None:
