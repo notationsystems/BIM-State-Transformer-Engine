@@ -26,11 +26,96 @@ from gat.engine.executor import World
 from gat.engine.sampling import sample_worlds
 from gat.engine.verify import Status, run_invariants
 from gat.geometry.stateio import derive_scene
-from gat.report import decode_response, disposition_hex
+from gat.ir.core import RelKind
+from gat.report import (
+    _AUDIT_ENTITY_STATUSES,
+    AUDIT_FORMAT,
+    decode_response,
+    disposition_hex,
+)
 
 VIEWER_SCENE_FORMAT = "gat-viewer-scene-v1"
 REQUEST_FORMAT = "gat-headless-request-v1"
 _OVERLAY_OPERATIONS = frozenset({"acceptance", "beam_assurance", "change_impact"})
+
+#: Hierarchy depth for the EXPLODE view: what an element is voided by or
+#: fills decides how far it travels; spaces lift instead.  A displacement is
+#: a reading offset, never a position.
+_HOST_KINDS = (RelKind.VOIDS, RelKind.FILLS)
+
+
+def _box_center(box) -> np.ndarray:
+    c, s = np.cos(float(box.angle)), np.sin(float(box.angle))
+    hx, hy, hz = (float(v) / 2.0 for v in box.extents)
+    return np.array(
+        [
+            float(box.origin[0]) + c * hx - s * hy,
+            float(box.origin[1]) + s * hx + c * hy,
+            float(box.origin[2]) + hz,
+        ]
+    )
+
+
+def explode_offsets(world: World, scene) -> list[list[float]]:
+    """Full-explosion displacement of every scene element, deterministic.
+
+    Elements move radially away from the plan centroid; an opening moves
+    with the wall it voids and a door with the opening it fills, each one
+    step further out and higher, so a host and its parts read as one
+    family pulled apart.  Spaces lift straight up.  The rule is a reading
+    order derived from the IR relationship graph, not a measurement: the
+    viewer scales these vectors by its slider and says so.
+    """
+    centers = {element.entity_id: _box_center(element.box) for element in scene.elements}
+    if not centers:
+        return []
+    stack = np.stack(list(centers.values()))
+    centroid = stack.mean(axis=0)
+    span = float(max(np.ptp(stack[:, 0]), np.ptp(stack[:, 1]), 1.0))
+    host = {rel.source: rel.target for rel in world.module.rels if rel.kind in _HOST_KINDS}
+    offsets: list[list[float]] = []
+    for element in scene.elements:
+        eid = element.entity_id
+        anchor, depth = eid, 0
+        while anchor in host and depth < 8:
+            anchor, depth = host[anchor], depth + 1
+        if eid.ifc_class == "IfcSpace":
+            offsets.append([0.0, 0.0, round(0.5 * span, 4)])
+            continue
+        direction = (centers.get(anchor, centers[eid]) - centroid)[:2]
+        norm = float(np.hypot(direction[0], direction[1]))
+        unit = direction / norm if norm > 1e-9 else np.array([0.0, 1.0])
+        reach = 0.55 * span * (1.0 + 0.35 * depth)
+        lift = 0.12 * span * depth
+        offsets.append(
+            [round(float(unit[0] * reach), 4), round(float(unit[1] * reach), 4), round(lift, 4)]
+        )
+    return offsets
+
+
+def audit_statuses(document: Mapping[str, object]) -> dict[str, str]:
+    """``GlobalId -> entity status`` from a ``gat-ifc-audit-v1`` document.
+
+    Fail-closed: any other format or an unknown status is refused, so the
+    viewer never outlines a piece with a guessed colour.
+    """
+    if not isinstance(document, Mapping) or document.get("format") != AUDIT_FORMAT:
+        raise ValueError(f"audit statuses need a {AUDIT_FORMAT} document")
+    entities = document.get("entities")
+    if not isinstance(entities, list):
+        raise ValueError("audit document has no entities list")
+    statuses: dict[str, str] = {}
+    for entity in entities:
+        if not isinstance(entity, Mapping):
+            raise ValueError("audit entity is not an object")
+        status = entity.get("status")
+        global_id = entity.get("global_id")
+        if status not in _AUDIT_ENTITY_STATUSES:
+            raise ValueError(f"unsupported audit entity status {status!r}")
+        if isinstance(global_id, str) and global_id:
+            statuses[global_id] = status
+    return statuses
+
 
 #: Identity hues per IFC class (muted architectural neutrals) and the
 #: alpha its splats render with; unknown classes fall back to "other".
@@ -186,22 +271,36 @@ def viewer_payload(
     spacing: float = 0.75,
     model_name: str = "",
     decision: Mapping[str, object] | None = None,
+    audit_statuses: Mapping[str, str] | None = None,
 ) -> dict[str, object]:
     """Build the embedded scene document: nominal belief + ``n`` samples,
-    optionally carrying one bound decision overlay.
+    optionally carrying one bound decision overlay and per-element audit
+    statuses (``GlobalId -> status``, see :func:`audit_statuses`).
 
     Deterministic: same world + n + seed + spacing => identical payload.
     """
     if n < 0:
         raise ValueError("variation count must be non-negative")
+    if audit_statuses is not None:
+        unknown = set(audit_statuses.values()) - _AUDIT_ENTITY_STATUSES
+        if unknown:
+            raise ValueError(f"unsupported audit entity statuses {sorted(unknown)!r}")
     scene = derive_scene(world, spacing=spacing)
+    offsets = explode_offsets(world, scene)
     classes: list[str] = []
     elements = []
-    for element in scene.elements:
+    matched = 0
+    for element, offset in zip(scene.elements, offsets):
         ifc_class = element.entity_id.ifc_class
         if ifc_class not in classes:
             classes.append(ifc_class)
         style = CLASS_STYLES.get(ifc_class, CLASS_STYLES["other"])
+        audit = None
+        if audit_statuses is not None:
+            status = audit_statuses.get(element.entity_id.global_id)
+            if status is not None:
+                matched += 1
+                audit = {"status": status, "color": disposition_hex(status)}
         elements.append(
             {
                 # Identity survives representation: the IR's EntityId names
@@ -213,6 +312,8 @@ def viewer_payload(
                 "alpha": style[1],
                 "solid": element.is_solid,
                 "box": _box_record(element.box),
+                "explode": offset,
+                "audit": audit,
                 "quantities": [
                     None if var is None else var.quantity for var in element.extent_vars
                 ],
@@ -238,6 +339,9 @@ def viewer_payload(
         "elements": elements,
         "samples": samples,
         "decision": dict(decision) if decision is not None else None,
+        "audit": None
+        if audit_statuses is None
+        else {"format": AUDIT_FORMAT, "matched": matched, "elements": len(elements)},
     }
 
 
@@ -249,6 +353,7 @@ def export_viewer_html(
     spacing: float = 0.75,
     model_name: str = "",
     decision: Mapping[str, object] | None = None,
+    audit_statuses: Mapping[str, str] | None = None,
 ) -> int:
     """Write the viewer HTML; returns the number of embedded samples."""
     payload = viewer_payload(
@@ -258,6 +363,7 @@ def export_viewer_html(
         spacing=spacing,
         model_name=model_name,
         decision=decision,
+        audit_statuses=audit_statuses,
     )
     Path(path).write_text(render_viewer_html(payload), encoding="utf-8")
     return len(payload["samples"])
@@ -296,7 +402,7 @@ canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
 label.cls { display: block; font-size: 0.85rem; }
 label.cls .swatch { display: inline-block; width: 0.7em; height: 0.7em;
   border-radius: 3px; margin: 0 0.4em 0 0.2em; }
-#sigma { width: 100%; }
+#sigma, #explode { width: 100%; }
 #hud footer { margin-top: 0.7rem; color: #6b6a66; font-size: 0.72rem; }
 #hud footer p { margin: 0.15rem 0; }
 #decision { border-left: 4px solid #999; padding: 0.4rem 0.6rem; margin: 0.4rem 0 0.2rem;
@@ -333,8 +439,16 @@ label.cls .swatch { display: inline-block; width: 0.7em; height: 0.7em;
   <label class="cls"><input id="ghost" type="checkbox" checked> ghost the nominal under samples</label>
   <h2>View</h2>
   <div id="views"></div>
+  <h2>Explode <span id="explodeValue">assembled</span></h2>
+  <input id="explode" type="range" min="0" max="1" step="0.05" value="0">
+  <div class="meta">pieces displaced along the IR hierarchy for reading; a displacement is not a position</div>
+  <div id="auditBox" hidden>
+    <h2>Audit</h2>
+    <label class="cls"><input id="auditToggle" type="checkbox" checked> outline pieces by audit status</label>
+    <div id="auditLegend"></div>
+  </div>
   <footer>
-    <p>orbit: drag &middot; zoom: wheel &middot; pan: shift-drag &middot; click: inspect &middot; &larr;/&rarr; realization &middot; esc: clear</p>
+    <p>orbit: drag &middot; zoom: wheel &middot; pan: shift-drag &middot; click: inspect &middot; &larr;/&rarr; realization &middot; x: explode &middot; esc: clear</p>
     <p>Read-only: no BIM state was changed.</p>
   </footer>
 </div>
@@ -397,11 +511,11 @@ function program(vs, fs) {
   return p;
 }
 const SPLAT_PROGRAM = program(`
-  attribute vec3 aCenter, aOffset, aNormal; attribute vec4 aColor;
-  uniform mat4 uProj, uView; uniform float uSigma;
+  attribute vec3 aCenter, aOffset, aNormal, aExplode; attribute vec4 aColor;
+  uniform mat4 uProj, uView; uniform float uSigma, uExplode;
   varying vec3 vNormal; varying vec4 vColor;
   void main() {
-    vec3 world = aCenter + uSigma * aOffset;
+    vec3 world = aCenter + uSigma * aOffset + uExplode * aExplode;
     gl_Position = uProj * uView * vec4(world, 1.0);
     vNormal = aNormal; vColor = aColor;
   }`, `
@@ -431,7 +545,7 @@ const DECISION_SUBJECTS = new Set(DECISION ? DECISION.subjects : []);
 const DECISION_RGB = DECISION ? hexToRgb(DECISION.color) : null;
 
 // -- per-sample geometry (built lazily, grouped by element class) ----------
-const FLOATS = 13; // center 3 + offset 3 + normal 3 + color 4
+const FLOATS = 16; // center 3 + offset 3 + normal 3 + color 4 + explode 3
 const built = new Map();
 function buildSample(index) {
   const overlay = DECISION !== null && state.overlay;
@@ -452,6 +566,7 @@ function buildSample(index) {
     const rgb = tinted(i) ? DECISION_RGB : hexToRgb(element.color);
     const alpha = alphaOf(i);
     const transparent = alpha < 0.5;
+    const ex = element.explode;
     const c = sample.centers.slice(i * 3, i * 3 + 3);
     const A = sample.axes.slice(i * 9, i * 9 + 9); // row-major world map
     const s0 = Math.hypot(A[0], A[3], A[6]) || 1e-9;
@@ -471,7 +586,7 @@ function buildSample(index) {
         (A[3]*u[0])/(s0*s0) + (A[4]*u[1])/(s1*s1) + (A[5]*u[2])/(s2*s2),
         (A[6]*u[0])/(s0*s0) + (A[7]*u[1])/(s1*s1) + (A[8]*u[2])/(s2*s2)]);
       data.set([c[0], c[1], c[2], off[0], off[1], off[2], n[0], n[1], n[2],
-                rgb[0], rgb[1], rgb[2], alpha], cursor);
+                rgb[0], rgb[1], rgb[2], alpha, ex[0], ex[1], ex[2]], cursor);
       cursor += FLOATS;
     }
     ranges[ranges.length - 1].count += SPHERE.length;
@@ -526,6 +641,22 @@ function sampleBox(sampleIndex, elementIndex) {
   const b = SCENE.samples[sampleIndex].boxes, o = elementIndex * 7;
   return { origin: [b[o], b[o+1], b[o+2]], angle: b[o+3], extents: [b[o+4], b[o+5], b[o+6]] };
 }
+// The same box where the EXPLODE view currently draws it: a reading offset,
+// scaled by the slider, never a position.
+function displacement(elementIndex) {
+  const ex = SCENE.elements[elementIndex].explode;
+  return [ex[0] * state.explode, ex[1] * state.explode, ex[2] * state.explode];
+}
+function displacedBox(sampleIndex, elementIndex) {
+  const box = sampleBox(sampleIndex, elementIndex), d = displacement(elementIndex);
+  return { origin: [box.origin[0] + d[0], box.origin[1] + d[1], box.origin[2] + d[2]],
+           angle: box.angle, extents: box.extents };
+}
+function boxCenter(box) {
+  const c = Math.cos(box.angle), s = Math.sin(box.angle);
+  const hx = box.extents[0] / 2, hy = box.extents[1] / 2;
+  return [box.origin[0] + c * hx - s * hy, box.origin[1] + s * hx + c * hy, box.origin[2] + box.extents[2] / 2];
+}
 function rayBoxDistance(origin, dir, box) {
   // Slab test in the box's local frame (rotate by -yaw about z).
   const c = Math.cos(-box.angle), s = Math.sin(-box.angle);
@@ -578,6 +709,8 @@ const state = {
   sigma: 1.75,
   overlay: true,
   ghost: true,
+  explode: 0,
+  audit: true,
   selected: null,
   hidden: new Set(SCENE.classes.map((name, i) => name === "IfcSpace" ? i : -1).filter((i) => i >= 0)),
 };
@@ -682,7 +815,44 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "ArrowLeft")
     selectSample((state.sample + SCENE.samples.length - 1) % SCENE.samples.length);
   if (event.key === "Escape") selectElement(null);
+  if (event.key === "x" || event.key === "X") setExplode(state.explode > 0 ? 0 : 1);
 });
+// -- EXPLODE: a reading offset along the IR hierarchy, never a position -------
+const explodeInput = document.getElementById("explode");
+function setExplode(value) {
+  state.explode = Math.min(1, Math.max(0, value));
+  explodeInput.value = String(state.explode);
+  document.getElementById("explodeValue").textContent =
+    state.explode === 0 ? "assembled" : (state.explode >= 1 ? "exploded" : Math.round(state.explode * 100) + "%");
+  if (state.selected !== null) selectElement(state.selected, true); else draw();
+}
+explodeInput.addEventListener("input", () => setExplode(parseFloat(explodeInput.value)));
+// -- audit statuses: what the corpus could and could not represent, per piece --
+if (SCENE.audit) {
+  const box = document.getElementById("auditBox");
+  box.hidden = false;
+  const legend = document.getElementById("auditLegend");
+  const seen = new Map();
+  for (const element of SCENE.elements)
+    if (element.audit) seen.set(element.audit.status, element.audit.color);
+  for (const [status, color] of seen) {
+    const label = document.createElement("div");
+    label.className = "cls";
+    const swatch = document.createElement("span");
+    swatch.className = "swatch";
+    swatch.style.background = color;
+    label.append(swatch, document.createTextNode(status));
+    legend.append(label);
+  }
+  const note = document.createElement("div");
+  note.className = "meta";
+  note.append(document.createTextNode(
+    SCENE.audit.matched + " of " + SCENE.audit.elements + " pieces audited; READY pieces carry no outline"));
+  legend.append(note);
+  document.getElementById("auditToggle").addEventListener("change", (event) => {
+    state.audit = event.target.checked; draw();
+  });
+}
 document.getElementById("ghost").addEventListener("change", (event) => {
   state.ghost = event.target.checked; draw();
 });
@@ -734,6 +904,22 @@ function selectElement(index, quiet) {
     table.append(row);
   });
   card.append(table);
+  if (element.audit) {
+    const audit = document.createElement("div"); audit.className = "cls-name";
+    const badge = document.createElement("span"); badge.className = "badge";
+    badge.style.background = element.audit.color; badge.style.color = "#fff";
+    badge.style.borderRadius = "999px"; badge.style.padding = "0 0.55em";
+    badge.append(text(element.audit.status));
+    audit.append(text("audit: "), badge);
+    card.append(audit);
+  }
+  if (state.explode > 0) {
+    const d = displacement(index);
+    const shown = document.createElement("div"); shown.className = "cls-name";
+    shown.append(text("drawn " + Math.hypot(d[0], d[1], d[2]).toFixed(2) +
+      " m from its place for reading; not a position"));
+    card.append(shown);
+  }
   const hint = document.createElement("div"); hint.className = "cls-name";
   hint.append(text("esc or click empty space to clear"));
   card.append(hint);
@@ -783,7 +969,7 @@ function pick(clientX, clientY) {
   let best = null, bestT = Infinity;
   SCENE.elements.forEach((element, index) => {
     if (state.hidden.has(element.class)) return;
-    const t = rayBoxDistance(eye, dir, sampleBox(state.sample, index));
+    const t = rayBoxDistance(eye, dir, displacedBox(state.sample, index));
     if (t !== null && t < bestT) { bestT = t; best = index; }
   });
   selectElement(best);
@@ -827,12 +1013,13 @@ canvas.addEventListener("wheel", (event) => {
 // -- render ----------------------------------------------------------------
 function bindSplatAttributes() {
   const stride = FLOATS * 4;
-  const locations = ["aCenter", "aOffset", "aNormal", "aColor"].map(
+  const locations = ["aCenter", "aOffset", "aNormal", "aColor", "aExplode"].map(
     (name) => gl.getAttribLocation(SPLAT_PROGRAM, name));
   gl.vertexAttribPointer(locations[0], 3, gl.FLOAT, false, stride, 0);
   gl.vertexAttribPointer(locations[1], 3, gl.FLOAT, false, stride, 12);
   gl.vertexAttribPointer(locations[2], 3, gl.FLOAT, false, stride, 24);
   gl.vertexAttribPointer(locations[3], 4, gl.FLOAT, false, stride, 36);
+  gl.vertexAttribPointer(locations[4], 3, gl.FLOAT, false, stride, 52);
   locations.forEach((location) => gl.enableVertexAttribArray(location));
 }
 function draw() {
@@ -864,6 +1051,7 @@ function draw() {
   gl.uniformMatrix4fv(gl.getUniformLocation(SPLAT_PROGRAM, "uProj"), false, proj);
   gl.uniformMatrix4fv(gl.getUniformLocation(SPLAT_PROGRAM, "uView"), false, view);
   gl.uniform1f(gl.getUniformLocation(SPLAT_PROGRAM, "uSigma"), state.sigma);
+  gl.uniform1f(gl.getUniformLocation(SPLAT_PROGRAM, "uExplode"), state.explode);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   const ghostLocation = gl.getUniformLocation(SPLAT_PROGRAM, "uGhost");
@@ -895,9 +1083,33 @@ function draw() {
 
   // Decided and selected geometry stays visible even inside a wall.
   gl.disable(gl.DEPTH_TEST);
+  if (state.explode > 0) {
+    // Leader lines tie every displaced piece back to where it is assembled.
+    const leaders = [];
+    SCENE.elements.forEach((element, index) => {
+      if (state.hidden.has(element.class)) return;
+      const home = boxCenter(sampleBox(state.sample, index)), d = displacement(index);
+      leaders.push(...home, home[0] + d[0], home[1] + d[1], home[2] + d[2]);
+    });
+    if (leaders.length) {
+      const buffer = lineBuffer(leaders);
+      drawLines(buffer, [0.62, 0.61, 0.58], proj, view);
+      gl.deleteBuffer(buffer.buffer);
+    }
+  }
+  if (SCENE.audit && state.audit) {
+    // Corpus limits outline the piece in the status colour; the fill stays
+    // the identity hue, because an audit status is not a verdict on the asset.
+    SCENE.elements.forEach((element, index) => {
+      if (!element.audit || element.audit.status === "READY" || state.hidden.has(element.class)) return;
+      const outline = lineBuffer(boxEdges(displacedBox(state.sample, index), []));
+      drawLines(outline, hexToRgb(element.audit.color), proj, view);
+      gl.deleteBuffer(outline.buffer);
+    });
+  }
   if (proposals && state.overlay) drawLines(proposals, DECISION_RGB, proj, view);
   if (state.selected !== null) {
-    const outline = lineBuffer(boxEdges(sampleBox(state.sample, state.selected), []));
+    const outline = lineBuffer(boxEdges(displacedBox(state.sample, state.selected), []));
     drawLines(outline, [0.11, 0.11, 0.10], proj, view);
     gl.deleteBuffer(outline.buffer);
   }
@@ -914,7 +1126,9 @@ if (window.parent !== window)
 __all__ = [
     "CLASS_STYLES",
     "VIEWER_SCENE_FORMAT",
+    "audit_statuses",
     "decision_overlay",
+    "explode_offsets",
     "export_viewer_html",
     "render_viewer_html",
     "viewer_payload",

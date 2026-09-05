@@ -8,7 +8,8 @@
     gat sample  model.ifc [--n 500]              realization / violation rates
     gat report  response.json [--html]           render a gat-headless decision
     gat ledger  ledger.json [--html]             render an execution-ledger timeline
-    gat view    model.ifc -o viewer.html         offline 3D viewer (+ --decision overlay)
+    gat view    model.ifc -o viewer.html         offline 3D viewer (+ --decision overlay, --audit)
+    gat workbench model.ifc -o page.html       offline Workbench: eight modes, one identity
 
 Every command is deterministic and never mutates the model.  ``--json``
 (where offered) switches to machine-readable output.
@@ -141,7 +142,8 @@ def _bind_decision(command: str, args: argparse.Namespace):
 def _run_view(args: argparse.Namespace) -> int:
     from gat.geometry.viewer import export_viewer_html
 
-    session, _, decision, _, _ = _bind_decision("gat view", args)
+    session, model_path, decision, _, _ = _bind_decision("gat view", args)
+    statuses = _audit_statuses(model_path, session) if args.audit else None
     count = export_viewer_html(
         session.world,
         args.output,
@@ -150,10 +152,28 @@ def _run_view(args: argparse.Namespace) -> int:
         spacing=args.spacing,
         model_name=args.model,
         decision=decision,
+        audit_statuses=statuses,
     )
     suffix = f" + decision {decision['disposition']}" if decision else ""
+    if statuses is not None:
+        suffix += f" + audit statuses for {len(statuses)} entities"
     print(f"wrote {args.output}: offline viewer with {count} realizations{suffix}")
     return 0
+
+
+def _audit_statuses(model_path: str, session: GatSession) -> dict[str, str]:
+    """Per-entity audit statuses of the loaded model, bound by world digest."""
+    from gat.geometry.viewer import audit_statuses
+
+    if not model_path.lower().endswith(".ifc"):
+        raise ValueError("audit statuses apply to IFC sources only")
+    document = audit_ifc_file(model_path)
+    if document.world_digest not in (None, session.world.digest()):
+        raise ValueError(
+            "the audit lowered a different world than the model "
+            f"({document.world_digest} != {session.world.digest()})"
+        )
+    return audit_statuses(document.to_dict())
 
 
 def _run_workbench(args: argparse.Namespace) -> int:
@@ -163,17 +183,22 @@ def _run_workbench(args: argparse.Namespace) -> int:
     decision_report = decode_response(response) if response is not None else None
     ledger = decode_ledger(args.ledger) if args.ledger else None
     audit = None
+    statuses = None
     audit_reason = ""
     if args.no_audit:
         audit_reason = "The IFC audit was skipped (--no-audit)."
     elif model_path.lower().endswith(".ifc"):
+        from gat.geometry.viewer import audit_statuses
+
         audit_document = audit_ifc_file(model_path)
         if audit_document.world_digest not in (None, session.world.digest()):
             raise ValueError(
                 "gat workbench: the audit lowered a different world than the model "
                 f"({audit_document.world_digest} != {session.world.digest()})"
             )
-        audit = decode_response(audit_document.to_dict())
+        record = audit_document.to_dict()
+        audit = decode_response(record)
+        statuses = audit_statuses(record)
     else:
         suffix = Path(model_path).suffix or "(no extension)"
         audit_reason = (
@@ -192,6 +217,7 @@ def _run_workbench(args: argparse.Namespace) -> int:
         ledger=ledger,
         audit=audit,
         audit_reason=audit_reason,
+        audit_statuses=statuses,
     )
     modes = ", ".join(
         mode if state == "available" else f"{mode} ({state})"
@@ -525,6 +551,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--request",
         help="the matching gat-headless request; draws proposed clearance geometry",
+    )
+    p.add_argument(
+        "--audit",
+        action="store_true",
+        help="outline pieces by their IFC audit status (IFC sources only)",
     )
     p.set_defaults(handler=_run_view)
 

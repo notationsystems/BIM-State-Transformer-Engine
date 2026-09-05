@@ -70,6 +70,72 @@ class ViewerPayloadTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         self.assertTrue(all(":" in entity for entity in ids))
 
+    def test_explode_offsets_follow_the_hierarchy(self) -> None:
+        import numpy as np
+
+        by_name = {element["name"]: element for element in self.payload["elements"]}
+        centers = {}
+        for element in self.payload["elements"]:
+            box = element["box"]
+            c, s = np.cos(box["angle"]), np.sin(box["angle"])
+            hx, hy = box["extents"][0] / 2, box["extents"][1] / 2
+            centers[element["name"]] = np.array(
+                [box["origin"][0] + c * hx - s * hy, box["origin"][1] + s * hx + c * hy]
+            )
+        centroid = np.mean(list(centers.values()), axis=0)
+        for element in self.payload["elements"]:
+            self.assertEqual(len(element["explode"]), 3)
+            self.assertTrue(all(math.isfinite(v) for v in element["explode"]))
+        # perimeter walls move away from the plan centroid, in the plane
+        for name in ("Wall-South", "Wall-North", "Wall-West", "Wall-East"):
+            offset = np.array(by_name[name]["explode"][:2])
+            self.assertGreater(float(offset @ (centers[name] - centroid)), 0.0, name)
+            self.assertEqual(by_name[name]["explode"][2], 0.0)
+        # the door travels with the wall its opening voids, further out and lifted
+        wall = np.array(by_name["Wall-Party"]["explode"])
+        door = np.array(by_name["Door-1"]["explode"])
+        cosine = float(wall[:2] @ door[:2]) / (np.linalg.norm(wall[:2]) * np.linalg.norm(door[:2]))
+        self.assertGreater(cosine, 0.999)
+        self.assertGreater(np.linalg.norm(door[:2]), np.linalg.norm(wall[:2]))
+        self.assertGreater(door[2], 0.0)
+        # spaces lift straight up
+        self.assertEqual(by_name["Office-A"]["explode"][:2], [0.0, 0.0])
+        self.assertGreater(by_name["Office-A"]["explode"][2], 0.0)
+        self.assertIsNone(self.payload["audit"])
+        self.assertTrue(all(element["audit"] is None for element in self.payload["elements"]))
+
+    def test_audit_statuses_bind_by_global_id_fail_closed(self) -> None:
+        from gat.geometry.viewer import audit_statuses
+        from gat.ifc_audit import audit_ifc_file
+
+        document = audit_ifc_file(MODEL).to_dict()
+        statuses = audit_statuses(document)
+        self.assertEqual(set(statuses.values()), {"READY"})
+        payload = viewer_payload(self.world, n=0, audit_statuses=statuses)
+        self.assertEqual(payload["audit"]["matched"], len(payload["elements"]))
+        wall = next(e for e in payload["elements"] if e["name"] == "Wall-Party")
+        self.assertEqual(wall["audit"], {"status": "READY", "color": "#1ab233"})
+        # a status the palette does not know is refused, never guessed
+        with self.assertRaisesRegex(ValueError, "unsupported audit entity status"):
+            viewer_payload(
+                self.world, n=0, audit_statuses={"GATWAL0000000000000180": "FINE"}
+            )
+        with self.assertRaisesRegex(ValueError, "gat-ifc-audit-v1"):
+            audit_statuses({"format": "something-else", "entities": []})
+        tampered = dict(document)
+        tampered["entities"] = [{**document["entities"][0], "status": "OK"}]
+        with self.assertRaisesRegex(ValueError, "unsupported audit entity status"):
+            audit_statuses(tampered)
+        # an attention status paints an outline colour, and only that piece
+        partial = viewer_payload(
+            self.world,
+            n=0,
+            audit_statuses={"GATWAL0000000000000180": "NEEDS_GEOMETRY_DERIVATION"},
+        )
+        self.assertEqual(partial["audit"]["matched"], 1)
+        wall = next(e for e in partial["elements"] if e["name"] == "Wall-Party")
+        self.assertEqual(wall["audit"]["color"], "#f28c0d")
+
     def test_payload_is_deterministic(self) -> None:
         again = viewer_payload(self.world, n=3, seed=7, model_name="model.ifc")
         self.assertEqual(self.payload, again)
@@ -270,6 +336,26 @@ class ViewerHtmlTests(unittest.TestCase):
         for phrase in ('kind: "ready"', 'kind: "selection"', 'message.kind !== "select"',
                        "message.world_digest !== SCENE.world_digest"):
             self.assertIn(phrase, html)
+
+    def test_viewer_explodes_as_a_reading_offset(self) -> None:
+        from gat.geometry.viewer import render_viewer_html
+
+        world = GatSession.load_ifc(MODEL).world
+        html = render_viewer_html(viewer_payload(world, n=0))
+        for phrase in ("uExplode * aExplode", 'id="explode"', "a displacement is not a position",
+                       "displacedBox(state.sample, index)", "for reading; not a position"):
+            self.assertIn(phrase, html)
+
+    def test_cli_view_audit_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "viewer.html")
+            self.assertEqual(
+                cli_main(["view", MODEL, "-o", path, "--variations", "0", "--audit"]), 0
+            )
+            with open(path, encoding="utf-8") as handle:
+                html = handle.read()
+            self.assertIn('"audit":{"format":"gat-ifc-audit-v1","matched":8,"elements":8}', html)
+            self.assertIn('"audit":{"status":"READY","color":"#1ab233"}', html)
 
     def test_cli_view_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
