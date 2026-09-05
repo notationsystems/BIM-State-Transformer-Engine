@@ -263,6 +263,16 @@ class HtmlRenderingTests(unittest.TestCase):
         for signal_hex in ("#1ab233", "#d91414", "#f28c0d", "#595959"):
             self.assertNotIn(signal_hex, dark_block)
 
+    def test_fragment_is_the_body_of_the_page(self) -> None:
+        decoded = report.decode_response(beam_response())
+        fragment = report.render_html_fragment(decoded)
+        page = report.render_html(decoded)
+        self.assertIn(fragment, page)
+        self.assertTrue(fragment.startswith('<header class="banner"'))
+        self.assertTrue(fragment.endswith("</footer>"))
+        self.assertNotIn("<html", fragment)
+        self.assertNotIn("<style", fragment)
+
     def test_html_escapes_untrusted_response_text(self) -> None:
         tampered = copy.deepcopy(acceptance_response())
         tampered["result"]["reasons"] = ["<img src=x onerror=alert(1)>"]

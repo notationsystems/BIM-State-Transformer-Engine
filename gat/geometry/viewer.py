@@ -204,6 +204,9 @@ def viewer_payload(
         style = CLASS_STYLES.get(ifc_class, CLASS_STYLES["other"])
         elements.append(
             {
+                # Identity survives representation: the IR's EntityId names
+                # this element here, in the Workbench, and in every report.
+                "entity": str(element.entity_id),
                 "name": element.name,
                 "class": classes.index(ifc_class),
                 "color": style[0],
@@ -256,10 +259,14 @@ def export_viewer_html(
         model_name=model_name,
         decision=decision,
     )
-    encoded = json.dumps(payload, separators=(",", ":")).replace("</", "<\\/")
-    document = _TEMPLATE.replace("__GAT_SCENE_JSON__", encoded)
-    Path(path).write_text(document, encoding="utf-8")
+    Path(path).write_text(render_viewer_html(payload), encoding="utf-8")
     return len(payload["samples"])
+
+
+def render_viewer_html(payload: Mapping[str, object]) -> str:
+    """The self-contained viewer document for an already-built payload."""
+    encoded = json.dumps(payload, separators=(",", ":")).replace("</", "<\\/")
+    return _TEMPLATE.replace("__GAT_SCENE_JSON__", encoded)
 
 
 _TEMPLATE = r"""<!doctype html>
@@ -336,6 +343,8 @@ label.cls .swatch { display: inline-block; width: 0.7em; height: 0.7em;
 "use strict";
 const SCENE = JSON.parse(document.getElementById("scene").textContent);
 const PASS_COLOR = "#1ab233", FAIL_COLOR = "#d91414";
+// Host messages (Workbench embedding) name entities by id, never by position.
+const MESSAGE_FORMAT = "gat-workbench-message-v1";
 
 // -- tiny matrix math ------------------------------------------------------
 function perspective(fovy, aspect, near, far) {
@@ -641,7 +650,7 @@ function selectSample(index) {
   const sample = SCENE.samples[index];
   document.getElementById("failures").textContent =
     sample.failures.length ? "FAIL: " + sample.failures.join(", ") : "";
-  if (state.selected !== null) selectElement(state.selected); else draw();
+  if (state.selected !== null) selectElement(state.selected, true); else draw();
 }
 const classesBox = document.getElementById("classes");
 SCENE.classes.forEach((name, index) => {
@@ -693,12 +702,12 @@ for (const name of Object.keys(PRESETS).concat(["reset"])) {
   });
   viewsBox.appendChild(button);
 }
-function selectElement(index) {
+function selectElement(index, quiet) {
   state.selected = index;
   const card = document.getElementById("selected");
   card.hidden = index === null;
   card.replaceChildren();
-  if (index === null) { draw(); return; }
+  if (index === null) { draw(); if (!quiet) announceSelection(); return; }
   const element = SCENE.elements[index];
   const box = sampleBox(state.sample, index);
   const text = (value) => document.createTextNode(String(value));
@@ -729,7 +738,29 @@ function selectElement(index) {
   hint.append(text("esc or click empty space to clear"));
   card.append(hint);
   draw();
+  if (!quiet) announceSelection();
 }
+// -- host messages ------------------------------------------------------------
+// This viewer is one projection seat. A host page (the Workbench) may embed it
+// and carry the selection across its other modes; messages are the only
+// channel between them. They name entities by EntityId and the world by its
+// digest, never by position, and no message mutates the scene.
+function announceSelection() {
+  if (window.parent === window) return;
+  const element = state.selected === null ? null : SCENE.elements[state.selected];
+  window.parent.postMessage({
+    format: MESSAGE_FORMAT, kind: "selection", world_digest: SCENE.world_digest,
+    entity: element ? element.entity : null, name: element ? element.name : null,
+  }, "*");
+}
+window.addEventListener("message", (event) => {
+  const message = event.data;
+  if (!message || message.format !== MESSAGE_FORMAT || message.kind !== "select") return;
+  if (message.world_digest !== SCENE.world_digest) return;
+  if (message.entity === null) { selectElement(null, true); return; }
+  const index = SCENE.elements.findIndex((element) => element.entity === message.entity);
+  if (index >= 0) selectElement(index, true);
+});
 function cameraFrame() {
   const focus = [target[0] + camera.pan[0], target[1] + camera.pan[1], target[2] + camera.pan[2]];
   const eye = [
@@ -874,8 +905,17 @@ function draw() {
 }
 window.addEventListener("resize", draw);
 selectSample(0);
+if (window.parent !== window)
+  window.parent.postMessage({ format: MESSAGE_FORMAT, kind: "ready", world_digest: SCENE.world_digest }, "*");
 </script>
 </body></html>
 """
 
-__all__ = ["CLASS_STYLES", "VIEWER_SCENE_FORMAT", "export_viewer_html", "viewer_payload"]
+__all__ = [
+    "CLASS_STYLES",
+    "VIEWER_SCENE_FORMAT",
+    "decision_overlay",
+    "export_viewer_html",
+    "render_viewer_html",
+    "viewer_payload",
+]
