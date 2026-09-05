@@ -559,6 +559,7 @@ def _audit_parsed(
     source: str,
     source_sha256: str,
     size_bytes: int,
+    identity_version: int = 2,
 ) -> IfcAuditReport:
     type_counts = tuple(sorted(Counter(inst.type_name for inst in file.instances.values()).items()))
     model_issues: list[AuditIssue] = []
@@ -669,7 +670,11 @@ def _audit_parsed(
                 )
             )
     try:
+        from gat.source_identity import bind_source_content
+
         module = lower_ifc(file, source=source)
+        if identity_version == 2:
+            module = bind_source_content(module, source_sha256)
         lowering = StageAudit(
             AuditStatus.PASS,
             details=(("entity_count", len(module.entities)), ("relationship_count", len(module.rels))),
@@ -718,7 +723,10 @@ def _audit_parsed(
     )
 
 
-def audit_ifc_text(text: str, *, source: str = "<memory>") -> IfcAuditReport:
+def audit_ifc_text(text: str, *, source: str = "<memory>", identity_version: int = 2) -> IfcAuditReport:
+    from gat.source_identity import validate_identity_version
+
+    validate_identity_version(identity_version)
     raw = text.encode("utf-8")
     digest = hashlib.sha256(raw).hexdigest()
     try:
@@ -744,15 +752,21 @@ def audit_ifc_text(text: str, *, source: str = "<memory>") -> IfcAuditReport:
         source=source,
         source_sha256=digest,
         size_bytes=len(raw),
+        identity_version=identity_version,
     )
 
 
-def audit_ifc_file(path: str | Path) -> IfcAuditReport:
+def audit_ifc_file(path: str | Path, *, identity_version: int = 2) -> IfcAuditReport:
+    from gat.source_identity import validate_identity_version
+
+    validate_identity_version(identity_version)
     source = str(path)
     raw = Path(path).read_bytes()
     digest = hashlib.sha256(raw).hexdigest()
     try:
         text = raw.decode("utf-8")
+        if identity_version == 1:
+            text = text.replace("\r\n", "\n").replace("\r", "\n")
         file = parse_ifc(text)
     except Exception as exc:
         blocked = _blocked_stage(exc)
@@ -775,6 +789,7 @@ def audit_ifc_file(path: str | Path) -> IfcAuditReport:
         source=source,
         source_sha256=digest,
         size_bytes=len(raw),
+        identity_version=identity_version,
     )
 
 

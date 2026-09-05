@@ -146,6 +146,10 @@ class ProjectionSpecTests(unittest.TestCase):
         self.assertIn("marginals only", by_mode["STATE"].loss)
         self.assertIn("carry no information", by_mode["GRAPH"].loss)
         self.assertIn("no geodetic frame", by_mode["STRUCTURE"].frame)
+        # frame text is derived from the stated frame record, not typed by hand
+        self.assertIn("corner-origin box with yaw about +Z", by_mode["STRUCTURE"].frame)
+        self.assertIn("dimensions only", by_mode["STRUCTURE"].frame)
+        self.assertIn("METRE x 1.0 -> m", by_mode["STATE"].frame)
 
     def test_spec_dict_declares_version_and_no_mutation(self) -> None:
         record = self.specs()[0].to_dict()
@@ -216,6 +220,8 @@ class StatePayloadTests(unittest.TestCase):
         }
         self.assertEqual(state_ids, graph_ids)
         self.assertTrue(viewer_ids <= state_ids)
+        self.assertEqual(self.state["frame"]["id"], "model")
+        self.assertEqual(self.state["frame"], viewer_payload(self.world, n=0)["frame"])
         self.assertIn(WALL_PARTY, viewer_ids)
         self.assertEqual(self.state["world_digest"], self.world.digest())
 
@@ -299,6 +305,7 @@ class WorkbenchDocumentTests(unittest.TestCase):
         self.assertIn(MESSAGE_FORMAT, self.html)
         self.assertIn(READ_ONLY_FOOTER, self.html)
         self.assertIn(NON_AUTHORIZING_FOOTER, self.html)
+        self.assertIn("frame model (m, +Z up, no CRS)", self.html)
         for rule in self.payload["rules"]:
             self.assertIn(rule, self.html)
 

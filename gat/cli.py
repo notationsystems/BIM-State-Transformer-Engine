@@ -104,6 +104,7 @@ def _bind_decision(command: str, args: argparse.Namespace):
     from gat.geometry.viewer import decision_overlay
 
     model_path = args.model
+    identity_version = 2
     decision = None
     request = None
     response = None
@@ -112,17 +113,27 @@ def _bind_decision(command: str, args: argparse.Namespace):
     if args.request:
         with open(args.request, "r", encoding="utf-8") as handle:
             request = json.load(handle)
-        # The world digest carries the source path string, so load the model
-        # exactly as the request did when both name the same file.
         state = request.get("state") if isinstance(request, dict) else None
-        request_path = state.get("path") if isinstance(state, dict) else None
-        if (
-            isinstance(request_path, str)
-            and os.path.exists(request_path)
-            and os.path.samefile(request_path, args.model)
-        ):
+        if isinstance(state, dict) and "identity_version" in state:
+            from gat.source_identity import validate_identity_version
+
+            if state.get("kind") != "ifc":
+                raise ValueError("identity_version applies only to IFC imports")
+            identity_version = state["identity_version"]
+            validate_identity_version(identity_version)
+        if identity_version == 1:
+            request_path = state.get("path")
+            if not (
+                isinstance(request_path, str)
+                and os.path.exists(request_path)
+                and os.path.samefile(request_path, args.model)
+            ):
+                raise ValueError("legacy IFC identity requires the original request path to name the model")
             model_path = request_path
-    session = _load(model_path)
+    session = (
+        GatSession.load_ifc(model_path, identity_version=1)
+        if identity_version == 1 else _load(model_path)
+    )
     if args.decision:
         with open(args.decision, "r", encoding="utf-8") as handle:
             response = json.load(handle)
@@ -131,9 +142,9 @@ def _bind_decision(command: str, args: argparse.Namespace):
         except ValueError as exc:
             if "different world" in str(exc):
                 raise ValueError(
-                    f"{exc}; the world digest includes the model's path string, so "
-                    "load it with the same path form the headless request used "
-                    f"(or pass --request so {command} can match it)"
+                    f"{exc}; check the exact input bytes and import identity version. "
+                    "Historical v1 IFC assessments require --request with explicit "
+                    "state.identity_version=1 and the original path binding"
                 ) from exc
             raise
     return session, model_path, decision, request, response
@@ -167,13 +178,20 @@ def _audit_statuses(model_path: str, session: GatSession) -> dict[str, str]:
 
     if not model_path.lower().endswith(".ifc"):
         raise ValueError("audit statuses apply to IFC sources only")
-    document = audit_ifc_file(model_path)
+    document = _audit_loaded_ifc(model_path, session)
     if document.world_digest not in (None, session.world.digest()):
         raise ValueError(
             "the audit lowered a different world than the model "
             f"({document.world_digest} != {session.world.digest()})"
         )
     return audit_statuses(document.to_dict())
+
+
+def _audit_loaded_ifc(model_path: str, session: GatSession):
+    from gat.source_identity import IFC_SOURCE_IDENTITY
+
+    version = 2 if session.world.module.meta.get("source_identity_contract") == IFC_SOURCE_IDENTITY else 1
+    return audit_ifc_file(model_path, identity_version=version)
 
 
 def _run_workbench(args: argparse.Namespace) -> int:
@@ -190,7 +208,7 @@ def _run_workbench(args: argparse.Namespace) -> int:
     elif model_path.lower().endswith(".ifc"):
         from gat.geometry.viewer import audit_statuses
 
-        audit_document = audit_ifc_file(model_path)
+        audit_document = _audit_loaded_ifc(model_path, session)
         if audit_document.world_digest not in (None, session.world.digest()):
             raise ValueError(
                 "gat workbench: the audit lowered a different world than the model "

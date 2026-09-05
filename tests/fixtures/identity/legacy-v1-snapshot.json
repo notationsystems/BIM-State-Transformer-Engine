@@ -1,0 +1,4069 @@
+{
+ "format": "gat-state-snapshot",
+ "integrity": {
+  "algorithm": "sha256",
+  "digest": "9f7962bfa722f74f3662ba31d684ad070f532605567bea99c7d4a26556df0390"
+ },
+ "payload": {
+  "belief": {
+   "covariance": {
+    "dimension": 24,
+    "storage": "dense-row-major",
+    "values": [
+     0.0001,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     9e-06,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     9e-06,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     655.3600000000001,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     4e-06,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     655.3600000000001,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     4e-06,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     655.3600000000001,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     4e-06,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     2.5e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     655.3600000000001,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     4e-06,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.6e-05,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     501.7600000000001,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     4e-06
+    ]
+   },
+   "mean": [
+    3.0,
+    2.0,
+    0.9,
+    2.1,
+    1.0,
+    5.0,
+    4.0,
+    4.0,
+    4.0,
+    9.2,
+    320.0,
+    0.3,
+    9.2,
+    320.0,
+    0.3,
+    4.6,
+    320.0,
+    0.3,
+    4.6,
+    320.0,
+    0.3,
+    4.0,
+    280.0,
+    0.2
+   ],
+   "raw_variables": [
+    {
+     "entity": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "quantity": "ClearHeight"
+    },
+    {
+     "entity": {
+      "global_id": "GATDOR0000000000000210",
+      "ifc_class": "IfcDoor"
+     },
+     "quantity": "Height"
+    },
+    {
+     "entity": {
+      "global_id": "GATDOR0000000000000210",
+      "ifc_class": "IfcDoor"
+     },
+     "quantity": "Width"
+    },
+    {
+     "entity": {
+      "global_id": "GATOPN0000000000000200",
+      "ifc_class": "IfcOpeningElement"
+     },
+     "quantity": "Height"
+    },
+    {
+     "entity": {
+      "global_id": "GATOPN0000000000000200",
+      "ifc_class": "IfcOpeningElement"
+     },
+     "quantity": "Width"
+    },
+    {
+     "entity": {
+      "global_id": "GATSPC0000000000000300",
+      "ifc_class": "IfcSpace"
+     },
+     "quantity": "Length"
+    },
+    {
+     "entity": {
+      "global_id": "GATSPC0000000000000300",
+      "ifc_class": "IfcSpace"
+     },
+     "quantity": "Width"
+    },
+    {
+     "entity": {
+      "global_id": "GATSPC0000000000000320",
+      "ifc_class": "IfcSpace"
+     },
+     "quantity": "Length"
+    },
+    {
+     "entity": {
+      "global_id": "GATSPC0000000000000320",
+      "ifc_class": "IfcSpace"
+     },
+     "quantity": "Width"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000100",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Length"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000100",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "UnitCost"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000100",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Width"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000120",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Length"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000120",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "UnitCost"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000120",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Width"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000140",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Length"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000140",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "UnitCost"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000140",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Width"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000160",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Length"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000160",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "UnitCost"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000160",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Width"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000180",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Length"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000180",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "UnitCost"
+    },
+    {
+     "entity": {
+      "global_id": "GATWAL0000000000000180",
+      "ifc_class": "IfcWall"
+     },
+     "quantity": "Width"
+    }
+   ]
+  },
+  "module": {
+   "constraints": [
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSTY0000000000000015",
+       "ifc_class": "IfcBuildingStorey"
+      },
+      "quantity": "ClearHeight"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSTY0000000000000015",
+       "ifc_class": "IfcBuildingStorey"
+      },
+      "quantity": "TotalFloorArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSTY0000000000000015",
+       "ifc_class": "IfcBuildingStorey"
+      },
+      "quantity": "TotalWallCost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSTY0000000000000015",
+       "ifc_class": "IfcBuildingStorey"
+      },
+      "quantity": "TotalWallNetVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATDOR0000000000000210",
+       "ifc_class": "IfcDoor"
+      },
+      "quantity": "Area"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATDOR0000000000000210",
+       "ifc_class": "IfcDoor"
+      },
+      "quantity": "Height"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATDOR0000000000000210",
+       "ifc_class": "IfcDoor"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATOPN0000000000000200",
+       "ifc_class": "IfcOpeningElement"
+      },
+      "quantity": "Area"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATOPN0000000000000200",
+       "ifc_class": "IfcOpeningElement"
+      },
+      "quantity": "Height"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATOPN0000000000000200",
+       "ifc_class": "IfcOpeningElement"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000300",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "FloorArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000300",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "Length"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000300",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "Volume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000300",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000320",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "FloorArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000320",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "Length"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000320",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "Volume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000320",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Cost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Height"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Length"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "UnitCost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Cost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Height"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Length"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "UnitCost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Cost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Height"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Length"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "UnitCost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Cost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Height"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Length"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "UnitCost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Cost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "GrossVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Height"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Length"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetVolume"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "UnitCost"
+     }
+    },
+    {
+     "kind": "nonnegative",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Width"
+     }
+    },
+    {
+     "kind": "less_equal",
+     "lhs": {
+      "entity": {
+       "global_id": "GATDOR0000000000000210",
+       "ifc_class": "IfcDoor"
+      },
+      "quantity": "Height"
+     },
+     "rhs": {
+      "entity": {
+       "global_id": "GATOPN0000000000000200",
+       "ifc_class": "IfcOpeningElement"
+      },
+      "quantity": "Height"
+     },
+     "tol": 1e-09
+    },
+    {
+     "kind": "less_equal",
+     "lhs": {
+      "entity": {
+       "global_id": "GATDOR0000000000000210",
+       "ifc_class": "IfcDoor"
+      },
+      "quantity": "Width"
+     },
+     "rhs": {
+      "entity": {
+       "global_id": "GATOPN0000000000000200",
+       "ifc_class": "IfcOpeningElement"
+      },
+      "quantity": "Width"
+     },
+     "tol": 1e-09
+    },
+    {
+     "kind": "less_equal",
+     "lhs": {
+      "entity": {
+       "global_id": "GATOPN0000000000000200",
+       "ifc_class": "IfcOpeningElement"
+      },
+      "quantity": "Height"
+     },
+     "rhs": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Height"
+     },
+     "tol": 1e-09
+    },
+    {
+     "kind": "less_equal",
+     "lhs": {
+      "entity": {
+       "global_id": "GATOPN0000000000000200",
+       "ifc_class": "IfcOpeningElement"
+      },
+      "quantity": "Width"
+     },
+     "rhs": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "Length"
+     },
+     "tol": 1e-09
+    },
+    {
+     "expr": {
+      "left": {
+       "left": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSPC0000000000000300",
+          "ifc_class": "IfcSpace"
+         },
+         "quantity": "Length"
+        }
+       },
+       "op": "mul",
+       "right": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSPC0000000000000300",
+          "ifc_class": "IfcSpace"
+         },
+         "quantity": "Width"
+        }
+       }
+      },
+      "op": "mul",
+      "right": {
+       "op": "var",
+       "var": {
+        "entity": {
+         "global_id": "GATSTY0000000000000015",
+         "ifc_class": "IfcBuildingStorey"
+        },
+        "quantity": "ClearHeight"
+       }
+      }
+     },
+     "kind": "expr_equals",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000300",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "Volume"
+     }
+    },
+    {
+     "expr": {
+      "left": {
+       "left": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSPC0000000000000320",
+          "ifc_class": "IfcSpace"
+         },
+         "quantity": "Length"
+        }
+       },
+       "op": "mul",
+       "right": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSPC0000000000000320",
+          "ifc_class": "IfcSpace"
+         },
+         "quantity": "Width"
+        }
+       }
+      },
+      "op": "mul",
+      "right": {
+       "op": "var",
+       "var": {
+        "entity": {
+         "global_id": "GATSTY0000000000000015",
+         "ifc_class": "IfcBuildingStorey"
+        },
+        "quantity": "ClearHeight"
+       }
+      }
+     },
+     "kind": "expr_equals",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATSPC0000000000000320",
+       "ifc_class": "IfcSpace"
+      },
+      "quantity": "Volume"
+     }
+    },
+    {
+     "expr": {
+      "left": {
+       "op": "var",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      "op": "sub",
+      "right": {
+       "const": 0.0,
+       "op": "scaled_sum",
+       "terms": []
+      }
+     },
+     "kind": "expr_equals",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000100",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "expr": {
+      "left": {
+       "op": "var",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      "op": "sub",
+      "right": {
+       "const": 0.0,
+       "op": "scaled_sum",
+       "terms": []
+      }
+     },
+     "kind": "expr_equals",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000120",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "expr": {
+      "left": {
+       "op": "var",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      "op": "sub",
+      "right": {
+       "const": 0.0,
+       "op": "scaled_sum",
+       "terms": []
+      }
+     },
+     "kind": "expr_equals",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000140",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "expr": {
+      "left": {
+       "op": "var",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      "op": "sub",
+      "right": {
+       "const": 0.0,
+       "op": "scaled_sum",
+       "terms": []
+      }
+     },
+     "kind": "expr_equals",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000160",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    },
+    {
+     "expr": {
+      "left": {
+       "op": "var",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      "op": "sub",
+      "right": {
+       "const": 0.0,
+       "op": "scaled_sum",
+       "terms": [
+        {
+         "coefficient": 1.0,
+         "expr": {
+          "op": "var",
+          "var": {
+           "entity": {
+            "global_id": "GATOPN0000000000000200",
+            "ifc_class": "IfcOpeningElement"
+           },
+           "quantity": "Area"
+          }
+         }
+        }
+       ]
+      }
+     },
+     "kind": "expr_equals",
+     "tol": 1e-09,
+     "var": {
+      "entity": {
+       "global_id": "GATWAL0000000000000180",
+       "ifc_class": "IfcWall"
+      },
+      "quantity": "NetSideArea"
+     }
+    }
+   ],
+   "entities": [
+    {
+     "attrs": {},
+     "id": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "name": "Level 1",
+     "placement": {
+      "angle": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": null,
+       "prior_mu": 3.0,
+       "prior_sigma": 0.01,
+       "role": "raw",
+       "source_ref": 29,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATSTY0000000000000015",
+         "ifc_class": "IfcBuildingStorey"
+        },
+        "quantity": "ClearHeight"
+       }
+      },
+      {
+       "expr": {
+        "const": 0.0,
+        "op": "scaled_sum",
+        "terms": [
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATSPC0000000000000300",
+             "ifc_class": "IfcSpace"
+            },
+            "quantity": "FloorArea"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATSPC0000000000000320",
+             "ifc_class": "IfcSpace"
+            },
+            "quantity": "FloorArea"
+           }
+          }
+         }
+        ]
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATSTY0000000000000015",
+         "ifc_class": "IfcBuildingStorey"
+        },
+        "quantity": "TotalFloorArea"
+       }
+      },
+      {
+       "expr": {
+        "const": 0.0,
+        "op": "scaled_sum",
+        "terms": [
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000100",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "Cost"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000120",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "Cost"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000140",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "Cost"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000160",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "Cost"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000180",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "Cost"
+           }
+          }
+         }
+        ]
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "cur",
+       "var": {
+        "entity": {
+         "global_id": "GATSTY0000000000000015",
+         "ifc_class": "IfcBuildingStorey"
+        },
+        "quantity": "TotalWallCost"
+       }
+      },
+      {
+       "expr": {
+        "const": 0.0,
+        "op": "scaled_sum",
+        "terms": [
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000100",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "NetVolume"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000120",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "NetVolume"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000140",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "NetVolume"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000160",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "NetVolume"
+           }
+          }
+         },
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000180",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "NetVolume"
+           }
+          }
+         }
+        ]
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATSTY0000000000000015",
+         "ifc_class": "IfcBuildingStorey"
+        },
+        "quantity": "TotalWallNetVolume"
+       }
+      }
+     ],
+     "source_ref": 15
+    },
+    {
+     "attrs": {},
+     "id": {
+      "global_id": "GATDOR0000000000000210",
+      "ifc_class": "IfcDoor"
+     },
+     "name": "Door-1",
+     "placement": {
+      "angle": 1.5707963267948966,
+      "x": 5.2,
+      "y": 1.55,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATDOR0000000000000210",
+           "ifc_class": "IfcDoor"
+          },
+          "quantity": "Width"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATDOR0000000000000210",
+           "ifc_class": "IfcDoor"
+          },
+          "quantity": "Height"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATDOR0000000000000210",
+         "ifc_class": "IfcDoor"
+        },
+        "quantity": "Area"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 2.0,
+       "prior_sigma": 0.003,
+       "role": "raw",
+       "source_ref": 216,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATDOR0000000000000210",
+         "ifc_class": "IfcDoor"
+        },
+        "quantity": "Height"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 0.9,
+       "prior_sigma": 0.003,
+       "role": "raw",
+       "source_ref": 215,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATDOR0000000000000210",
+         "ifc_class": "IfcDoor"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 210
+    },
+    {
+     "attrs": {},
+     "id": {
+      "global_id": "GATOPN0000000000000200",
+      "ifc_class": "IfcOpeningElement"
+     },
+     "name": "Opening-1",
+     "placement": {
+      "angle": 1.5707963267948966,
+      "x": 5.2,
+      "y": 1.5,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATOPN0000000000000200",
+           "ifc_class": "IfcOpeningElement"
+          },
+          "quantity": "Width"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATOPN0000000000000200",
+           "ifc_class": "IfcOpeningElement"
+          },
+          "quantity": "Height"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATOPN0000000000000200",
+         "ifc_class": "IfcOpeningElement"
+        },
+        "quantity": "Area"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 2.1,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 206,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATOPN0000000000000200",
+         "ifc_class": "IfcOpeningElement"
+        },
+        "quantity": "Height"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 1.0,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 205,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATOPN0000000000000200",
+         "ifc_class": "IfcOpeningElement"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 200
+    },
+    {
+     "attrs": {},
+     "id": {
+      "global_id": "GATSPC0000000000000300",
+      "ifc_class": "IfcSpace"
+     },
+     "name": "Office-A",
+     "placement": {
+      "angle": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATSPC0000000000000300",
+           "ifc_class": "IfcSpace"
+          },
+          "quantity": "Length"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATSPC0000000000000300",
+           "ifc_class": "IfcSpace"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATSPC0000000000000300",
+         "ifc_class": "IfcSpace"
+        },
+        "quantity": "FloorArea"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 5.0,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 305,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATSPC0000000000000300",
+         "ifc_class": "IfcSpace"
+        },
+        "quantity": "Length"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATSPC0000000000000300",
+           "ifc_class": "IfcSpace"
+          },
+          "quantity": "FloorArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATSTY0000000000000015",
+           "ifc_class": "IfcBuildingStorey"
+          },
+          "quantity": "ClearHeight"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATSPC0000000000000300",
+         "ifc_class": "IfcSpace"
+        },
+        "quantity": "Volume"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 4.0,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 306,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATSPC0000000000000300",
+         "ifc_class": "IfcSpace"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 300
+    },
+    {
+     "attrs": {},
+     "id": {
+      "global_id": "GATSPC0000000000000320",
+      "ifc_class": "IfcSpace"
+     },
+     "name": "Office-B",
+     "placement": {
+      "angle": 0.0,
+      "x": 5.2,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATSPC0000000000000320",
+           "ifc_class": "IfcSpace"
+          },
+          "quantity": "Length"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATSPC0000000000000320",
+           "ifc_class": "IfcSpace"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATSPC0000000000000320",
+         "ifc_class": "IfcSpace"
+        },
+        "quantity": "FloorArea"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 4.0,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 325,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATSPC0000000000000320",
+         "ifc_class": "IfcSpace"
+        },
+        "quantity": "Length"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATSPC0000000000000320",
+           "ifc_class": "IfcSpace"
+          },
+          "quantity": "FloorArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATSTY0000000000000015",
+           "ifc_class": "IfcBuildingStorey"
+          },
+          "quantity": "ClearHeight"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATSPC0000000000000320",
+         "ifc_class": "IfcSpace"
+        },
+        "quantity": "Volume"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 4.0,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 326,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATSPC0000000000000320",
+         "ifc_class": "IfcSpace"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 320
+    },
+    {
+     "attrs": {
+      "external": true
+     },
+     "id": {
+      "global_id": "GATWAL0000000000000100",
+      "ifc_class": "IfcWall"
+     },
+     "name": "Wall-South",
+     "placement": {
+      "angle": 0.0,
+      "x": 0.0,
+      "y": -0.3,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000100",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetVolume"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000100",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "UnitCost"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "cur",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Cost"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000100",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Length"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000100",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Height"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000100",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "GrossSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000100",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossVolume"
+       }
+      },
+      {
+       "expr": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSTY0000000000000015",
+          "ifc_class": "IfcBuildingStorey"
+         },
+         "quantity": "ClearHeight"
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Height"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 9.2,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 110,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Length"
+       }
+      },
+      {
+       "expr": {
+        "const": 0.0,
+        "op": "scaled_sum",
+        "terms": [
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000100",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "GrossSideArea"
+           }
+          }
+         }
+        ]
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000100",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000100",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetVolume"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 320.0,
+       "prior_sigma": 25.6,
+       "role": "raw",
+       "source_ref": 114,
+       "unit": "cur/m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "UnitCost"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 0.3,
+       "prior_sigma": 0.002,
+       "role": "raw",
+       "source_ref": 111,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000100",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 100
+    },
+    {
+     "attrs": {
+      "external": true
+     },
+     "id": {
+      "global_id": "GATWAL0000000000000120",
+      "ifc_class": "IfcWall"
+     },
+     "name": "Wall-North",
+     "placement": {
+      "angle": 0.0,
+      "x": 0.0,
+      "y": 4.0,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000120",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetVolume"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000120",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "UnitCost"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "cur",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Cost"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000120",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Length"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000120",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Height"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000120",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "GrossSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000120",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossVolume"
+       }
+      },
+      {
+       "expr": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSTY0000000000000015",
+          "ifc_class": "IfcBuildingStorey"
+         },
+         "quantity": "ClearHeight"
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Height"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 9.2,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 130,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Length"
+       }
+      },
+      {
+       "expr": {
+        "const": 0.0,
+        "op": "scaled_sum",
+        "terms": [
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000120",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "GrossSideArea"
+           }
+          }
+         }
+        ]
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000120",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000120",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetVolume"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 320.0,
+       "prior_sigma": 25.6,
+       "role": "raw",
+       "source_ref": 134,
+       "unit": "cur/m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "UnitCost"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 0.3,
+       "prior_sigma": 0.002,
+       "role": "raw",
+       "source_ref": 131,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000120",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 120
+    },
+    {
+     "attrs": {
+      "external": true
+     },
+     "id": {
+      "global_id": "GATWAL0000000000000140",
+      "ifc_class": "IfcWall"
+     },
+     "name": "Wall-West",
+     "placement": {
+      "angle": 1.5707963267948966,
+      "x": 0.0,
+      "y": -0.3,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000140",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetVolume"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000140",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "UnitCost"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "cur",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Cost"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000140",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Length"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000140",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Height"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000140",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "GrossSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000140",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossVolume"
+       }
+      },
+      {
+       "expr": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSTY0000000000000015",
+          "ifc_class": "IfcBuildingStorey"
+         },
+         "quantity": "ClearHeight"
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Height"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 4.6,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 150,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Length"
+       }
+      },
+      {
+       "expr": {
+        "const": 0.0,
+        "op": "scaled_sum",
+        "terms": [
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000140",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "GrossSideArea"
+           }
+          }
+         }
+        ]
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000140",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000140",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetVolume"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 320.0,
+       "prior_sigma": 25.6,
+       "role": "raw",
+       "source_ref": 154,
+       "unit": "cur/m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "UnitCost"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 0.3,
+       "prior_sigma": 0.002,
+       "role": "raw",
+       "source_ref": 151,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000140",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 140
+    },
+    {
+     "attrs": {
+      "external": true
+     },
+     "id": {
+      "global_id": "GATWAL0000000000000160",
+      "ifc_class": "IfcWall"
+     },
+     "name": "Wall-East",
+     "placement": {
+      "angle": 1.5707963267948966,
+      "x": 9.5,
+      "y": -0.3,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000160",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetVolume"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000160",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "UnitCost"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "cur",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Cost"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000160",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Length"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000160",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Height"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000160",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "GrossSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000160",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossVolume"
+       }
+      },
+      {
+       "expr": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSTY0000000000000015",
+          "ifc_class": "IfcBuildingStorey"
+         },
+         "quantity": "ClearHeight"
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Height"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 4.6,
+       "prior_sigma": 0.005,
+       "role": "raw",
+       "source_ref": 170,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Length"
+       }
+      },
+      {
+       "expr": {
+        "const": 0.0,
+        "op": "scaled_sum",
+        "terms": [
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000160",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "GrossSideArea"
+           }
+          }
+         }
+        ]
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000160",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000160",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetVolume"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 320.0,
+       "prior_sigma": 25.6,
+       "role": "raw",
+       "source_ref": 174,
+       "unit": "cur/m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "UnitCost"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 0.3,
+       "prior_sigma": 0.002,
+       "role": "raw",
+       "source_ref": 171,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000160",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 160
+    },
+    {
+     "attrs": {},
+     "id": {
+      "global_id": "GATWAL0000000000000180",
+      "ifc_class": "IfcWall"
+     },
+     "name": "Wall-Party",
+     "placement": {
+      "angle": 1.5707963267948966,
+      "x": 5.2,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "slots": [
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000180",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetVolume"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000180",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "UnitCost"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "cur",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Cost"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000180",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Length"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000180",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Height"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000180",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "GrossSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000180",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "GrossVolume"
+       }
+      },
+      {
+       "expr": {
+        "op": "var",
+        "var": {
+         "entity": {
+          "global_id": "GATSTY0000000000000015",
+          "ifc_class": "IfcBuildingStorey"
+         },
+         "quantity": "ClearHeight"
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Height"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 4.0,
+       "prior_sigma": 0.004,
+       "role": "raw",
+       "source_ref": 184,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Length"
+       }
+      },
+      {
+       "expr": {
+        "const": 0.0,
+        "op": "scaled_sum",
+        "terms": [
+         {
+          "coefficient": 1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATWAL0000000000000180",
+             "ifc_class": "IfcWall"
+            },
+            "quantity": "GrossSideArea"
+           }
+          }
+         },
+         {
+          "coefficient": -1.0,
+          "expr": {
+           "op": "var",
+           "var": {
+            "entity": {
+             "global_id": "GATOPN0000000000000200",
+             "ifc_class": "IfcOpeningElement"
+            },
+            "quantity": "Area"
+           }
+          }
+         }
+        ]
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m2",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetSideArea"
+       }
+      },
+      {
+       "expr": {
+        "left": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000180",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "NetSideArea"
+         }
+        },
+        "op": "mul",
+        "right": {
+         "op": "var",
+         "var": {
+          "entity": {
+           "global_id": "GATWAL0000000000000180",
+           "ifc_class": "IfcWall"
+          },
+          "quantity": "Width"
+         }
+        }
+       },
+       "prior_mu": 0.0,
+       "prior_sigma": 0.0,
+       "role": "derived",
+       "source_ref": null,
+       "unit": "m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "NetVolume"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 280.0,
+       "prior_sigma": 22.400000000000002,
+       "role": "raw",
+       "source_ref": 188,
+       "unit": "cur/m3",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "UnitCost"
+       }
+      },
+      {
+       "expr": null,
+       "prior_mu": 0.2,
+       "prior_sigma": 0.002,
+       "role": "raw",
+       "source_ref": 185,
+       "unit": "m",
+       "var": {
+        "entity": {
+         "global_id": "GATWAL0000000000000180",
+         "ifc_class": "IfcWall"
+        },
+        "quantity": "Width"
+       }
+      }
+     ],
+     "source_ref": 180
+    }
+   ],
+   "meta": {
+    "adapter": "gat.adapters.ifc v0",
+    "ifc_length_scale_to_metres": "1.0",
+    "ifc_length_unit": "METRE",
+    "schema": "IFC4",
+    "source": "legacy-v1-model.ifc"
+   },
+   "relationships": [
+    {
+     "kind": "aggregates",
+     "source": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "source_ref": 402,
+     "target": {
+      "global_id": "GATSPC0000000000000300",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "aggregates",
+     "source": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "source_ref": 402,
+     "target": {
+      "global_id": "GATSPC0000000000000320",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "bounds",
+     "source": {
+      "global_id": "GATWAL0000000000000100",
+      "ifc_class": "IfcWall"
+     },
+     "source_ref": 406,
+     "target": {
+      "global_id": "GATSPC0000000000000300",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "bounds",
+     "source": {
+      "global_id": "GATWAL0000000000000100",
+      "ifc_class": "IfcWall"
+     },
+     "source_ref": 410,
+     "target": {
+      "global_id": "GATSPC0000000000000320",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "bounds",
+     "source": {
+      "global_id": "GATWAL0000000000000120",
+      "ifc_class": "IfcWall"
+     },
+     "source_ref": 407,
+     "target": {
+      "global_id": "GATSPC0000000000000300",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "bounds",
+     "source": {
+      "global_id": "GATWAL0000000000000120",
+      "ifc_class": "IfcWall"
+     },
+     "source_ref": 411,
+     "target": {
+      "global_id": "GATSPC0000000000000320",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "bounds",
+     "source": {
+      "global_id": "GATWAL0000000000000140",
+      "ifc_class": "IfcWall"
+     },
+     "source_ref": 408,
+     "target": {
+      "global_id": "GATSPC0000000000000300",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "bounds",
+     "source": {
+      "global_id": "GATWAL0000000000000160",
+      "ifc_class": "IfcWall"
+     },
+     "source_ref": 412,
+     "target": {
+      "global_id": "GATSPC0000000000000320",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "bounds",
+     "source": {
+      "global_id": "GATWAL0000000000000180",
+      "ifc_class": "IfcWall"
+     },
+     "source_ref": 409,
+     "target": {
+      "global_id": "GATSPC0000000000000300",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "bounds",
+     "source": {
+      "global_id": "GATWAL0000000000000180",
+      "ifc_class": "IfcWall"
+     },
+     "source_ref": 413,
+     "target": {
+      "global_id": "GATSPC0000000000000320",
+      "ifc_class": "IfcSpace"
+     }
+    },
+    {
+     "kind": "contains",
+     "source": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "source_ref": 403,
+     "target": {
+      "global_id": "GATDOR0000000000000210",
+      "ifc_class": "IfcDoor"
+     }
+    },
+    {
+     "kind": "contains",
+     "source": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "source_ref": 403,
+     "target": {
+      "global_id": "GATWAL0000000000000100",
+      "ifc_class": "IfcWall"
+     }
+    },
+    {
+     "kind": "contains",
+     "source": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "source_ref": 403,
+     "target": {
+      "global_id": "GATWAL0000000000000120",
+      "ifc_class": "IfcWall"
+     }
+    },
+    {
+     "kind": "contains",
+     "source": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "source_ref": 403,
+     "target": {
+      "global_id": "GATWAL0000000000000140",
+      "ifc_class": "IfcWall"
+     }
+    },
+    {
+     "kind": "contains",
+     "source": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "source_ref": 403,
+     "target": {
+      "global_id": "GATWAL0000000000000160",
+      "ifc_class": "IfcWall"
+     }
+    },
+    {
+     "kind": "contains",
+     "source": {
+      "global_id": "GATSTY0000000000000015",
+      "ifc_class": "IfcBuildingStorey"
+     },
+     "source_ref": 403,
+     "target": {
+      "global_id": "GATWAL0000000000000180",
+      "ifc_class": "IfcWall"
+     }
+    },
+    {
+     "kind": "fills",
+     "source": {
+      "global_id": "GATDOR0000000000000210",
+      "ifc_class": "IfcDoor"
+     },
+     "source_ref": 405,
+     "target": {
+      "global_id": "GATOPN0000000000000200",
+      "ifc_class": "IfcOpeningElement"
+     }
+    },
+    {
+     "kind": "voids",
+     "source": {
+      "global_id": "GATOPN0000000000000200",
+      "ifc_class": "IfcOpeningElement"
+     },
+     "source_ref": 404,
+     "target": {
+      "global_id": "GATWAL0000000000000180",
+      "ifc_class": "IfcWall"
+     }
+    }
+   ]
+  },
+  "provenance": {
+   "trace_events": [
+    {
+     "detail": "10 entities, 24 raw + 39 derived vars",
+     "digest": "f628952eaff3bac72edf1705da3d66e196bb6ee2736382535bd3f3c33a73a2ad",
+     "name": "legacy-v1-model.ifc",
+     "seq": 0,
+     "stage": "compile",
+     "verify": "PASS"
+    }
+   ]
+  },
+  "source_configuration_digest": "fbf1b1b4c22f1675deed1d19e74c79f17c36390db4526b0029456d38255a2203",
+  "source_module_digest": "63bef33e2d7d078526a9f942f13e1cf55ade84e79090c0d22b349a239d59dd1c",
+  "source_world_digest": "f628952eaff3bac72edf1705da3d66e196bb6ee2736382535bd3f3c33a73a2ad"
+ },
+ "runtime_contract": "gat-world-v1",
+ "schema_version": 1
+}

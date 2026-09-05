@@ -1,0 +1,119 @@
+{
+  "events": [
+    {
+      "error_digest": null,
+      "error_message": null,
+      "error_type": null,
+      "event_hash": "902e0d2a1c6ce1767a723aac22297c5270de9d150bacc4fe8e7c04bbda3e4d87",
+      "kind": "genesis",
+      "operation": {
+        "belief_digest": "590e070c824a82cd8e6b98b7aaa5739a2e6424a9a7cda011f91abefd933da7d3",
+        "configuration_digest": "fbf1b1b4c22f1675deed1d19e74c79f17c36390db4526b0029456d38255a2203",
+        "module_digest": "63bef33e2d7d078526a9f942f13e1cf55ade84e79090c0d22b349a239d59dd1c",
+        "runtime_contract": "gat-world-v1"
+      },
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "prior_world_digest": "f628952eaff3bac72edf1705da3d66e196bb6ee2736382535bd3f3c33a73a2ad",
+      "provenance": {},
+      "result_world_digest": "f628952eaff3bac72edf1705da3d66e196bb6ee2736382535bd3f3c33a73a2ad",
+      "seq": 0,
+      "verification": {
+        "passed": true,
+        "results": [
+          {
+            "detail": "18 edges",
+            "invariant_id": "STRUCT-01",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "module"
+          },
+          {
+            "detail": "9 nodes",
+            "invariant_id": "STRUCT-02",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "spatial-tree"
+          },
+          {
+            "detail": "",
+            "invariant_id": "STRUCT-03",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "openings"
+          },
+          {
+            "detail": "",
+            "invariant_id": "GAUSS-01",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "belief"
+          },
+          {
+            "detail": "",
+            "invariant_id": "GAUSS-01",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "full"
+          },
+          {
+            "detail": "jitter=0",
+            "invariant_id": "GAUSS-02",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "belief"
+          },
+          {
+            "detail": "diag >= 0",
+            "invariant_id": "GAUSS-02",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "full"
+          },
+          {
+            "detail": "39 vars",
+            "invariant_id": "GAUSS-03",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "derived"
+          },
+          {
+            "detail": "",
+            "invariant_id": "CONS-01",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "nonneg"
+          },
+          {
+            "detail": "",
+            "invariant_id": "CONS-02",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "bounds"
+          },
+          {
+            "detail": "",
+            "invariant_id": "CONS-03",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "restatements"
+          },
+          {
+            "detail": "",
+            "invariant_id": "QTY-01",
+            "residual": 0.0,
+            "status": "PASS",
+            "subject": "rollups"
+          }
+        ]
+      },
+      "verification_digest": "e5abfdea73c325b9aaf60b7bcd4598c3634a9ff99182fdcd8f3adcf0ad13a2d3"
+    }
+  ],
+  "format": "gat-execution-ledger",
+  "integrity": {
+    "algorithm": "sha256",
+    "head": "902e0d2a1c6ce1767a723aac22297c5270de9d150bacc4fe8e7c04bbda3e4d87"
+  },
+  "runtime_contract": "gat-world-v1",
+  "schema_version": 1
+}

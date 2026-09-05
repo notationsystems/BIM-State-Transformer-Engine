@@ -53,6 +53,9 @@ jobs:
       - name: Run the ledger replay demo (self-asserting)
         run: python -m gat.demo.ledger_replay ci-out/execution-ledger.json
 
+      - name: Run the Workbench clearance walkthrough (self-asserting)
+        run: python -m gat.demo.workbench ci-out/workbench
+
   test-openusd:
     runs-on: ubuntu-latest
     steps:

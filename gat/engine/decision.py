@@ -50,6 +50,7 @@ class EvidenceDisposition(StrEnum):
 
     OBSERVE = "OBSERVE"
     DECISION_RESOLVED = "DECISION_RESOLVED"
+    NO_AVAILABLE_EVIDENCE = "NO_AVAILABLE_EVIDENCE"
     NO_WORTHWHILE_EVIDENCE = "NO_WORTHWHILE_EVIDENCE"
 
 
@@ -170,6 +171,8 @@ def plan_decision_evidence(
     The no-observation baseline has zero epistemic value and zero action
     cost.  Consequently an observation is worthwhile exactly when its
     target-relevant information gain exceeds its cost in nats.
+    An unresolved decision with no candidates returns NO_AVAILABLE_EVIDENCE;
+    it remains unresolved and no observation is selected.
     """
     assessment = assess_decision(world, decision)
     if assessment.resolved:
@@ -178,6 +181,15 @@ def plan_decision_evidence(
             options=(),
             selected=None,
             disposition=EvidenceDisposition.DECISION_RESOLVED,
+        )
+
+    candidates = tuple(candidates)
+    if not candidates:
+        return DecisionEvidencePlan(
+            assessment=assessment,
+            options=(),
+            selected=None,
+            disposition=EvidenceDisposition.NO_AVAILABLE_EVIDENCE,
         )
 
     options = plan_observations(world, candidates, decision.as_preference())
