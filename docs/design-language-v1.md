@@ -194,7 +194,8 @@ assurance flags render `no` in plain sight and audit statuses like
   operation. Elements the case could not clear at its confidence
   (`P(violation) > 1 − confidence`), the assessed beam, or a change's
   impacted entities are painted with the disposition colour — the one
-  place signal colour touches geometry, because it *is* a verdict. The
+  place signal colour *fills* geometry, because it *is* a verdict (audit
+  statuses may *outline* a piece, see below, and never fill it). The
   request's proposed clearance boxes are drawn as always-visible wireframes
   in the same colour, so a REJECT is seen at the exact spot it was
   decided. Because the engine's world digest currently carries the model's
@@ -202,6 +203,21 @@ assurance flags render `no` in plain sight and audit statuses like
   path form when it names the same file; a digest mismatch is refused with
   that hint rather than silently re-bound. The HUD card repeats the report's headline badge, reasons,
   risk table, next evidence, and footers.
+* `gat view … [--audit]` — the EXPLODE view and audit outlines. The
+  explode slider (or `x`) displaces every piece along the IR hierarchy:
+  perimeter elements move away from the plan centroid, an opening travels
+  with the wall it voids and a door with the opening it fills, each a step
+  further out and higher, and spaces lift. Leader lines tie each piece back
+  to its assembled place, picking follows the displaced piece, and the
+  inspection card states the displacement as "drawn N m from its place for
+  reading; not a position" — the offsets are a reading order derived from
+  the relationship graph, never geometry. With `--audit` (or inside the
+  workbench when the audit is bound) each piece carries its IFC audit
+  status, bound by GlobalId and refused if the vocabulary is unknown; a
+  piece the corpus could not fully represent (`NEEDS_GEOMETRY_DERIVATION`,
+  `MISSING_SOURCE_DATA`, `BLOCKED`) is *outlined* in its status colour
+  while its fill keeps the identity hue, because an audit status describes
+  the corpus, not a verdict on the asset. `READY` pieces carry no outline.
 * `gat workbench model.ifc -o workbench.html [--decision … --request … --ledger … --no-audit]`
   — the Notation Workbench: the eight modes above behind one toolbar
   (keys 1–8), the viewer embedded in a sandboxed frame as STRUCTURE, the
