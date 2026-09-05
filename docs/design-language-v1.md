@@ -130,11 +130,24 @@ never silently.
 * `gat view model.ifc -o viewer.html [--variations N]` — the offline 3D
   instrument: the nominal belief plus `N` belief-sampled as-built
   realizations, each splat drawn as its k-sigma ellipsoid (slider from
-  0.5 to 3 sigma), orbit/zoom/pan, per-class visibility, and one chip per
-  realization whose dot carries the signal palette for its invariant
-  verdict. Element hues are identity colours (muted architectural
-  neutrals), never signal colours; the geometry on screen *is* the
-  uncertainty, so no synthetic "error bars" are drawn.
+  0.5 to 3 sigma; the default 1.75 ≈ √3 sigma is where moment-matched
+  tiles exactly fill their boxes), orbit/zoom/pan, per-class visibility,
+  and one chip per realization whose dot carries the signal palette for
+  its invariant verdict. Element hues are identity colours (muted
+  architectural neutrals), never signal colours; the geometry on screen
+  *is* the uncertainty, so no synthetic "error bars" are drawn.
+* `gat view … --decision response.json [--request request.json]` — the
+  decision overlay. The response is bound to the loaded model fail-closed:
+  its world digest (for beam assurance, its prior-world digest) must equal
+  the model's, and a request must carry the same request id and
+  operation. Elements the case could not clear at its confidence
+  (`P(violation) > 1 − confidence`), the assessed beam, or a change's
+  impacted entities are painted with the disposition colour — the one
+  place signal colour touches geometry, because it *is* a verdict. The
+  request's proposed clearance boxes are drawn as always-visible wireframes
+  in the same colour, so a REJECT is seen at the exact spot it was
+  decided. The HUD card repeats the report's headline badge, reasons,
+  risk table, next evidence, and footers.
 
 ## Non-goals
 

@@ -62,6 +62,137 @@ class ViewerPayloadTests(unittest.TestCase):
         )
 
 
+def clearance_request(request_id: str = "duct-route-1") -> dict:
+    return {
+        "format": "gat-headless-request-v1",
+        "request_id": request_id,
+        "operation": "acceptance",
+        "state": {"kind": "ifc", "path": MODEL},
+        "payload": {
+            "case_id": "route-1",
+            "workflow": "AS_BUILT_CLEARANCE",
+            "subject": "crossing duct",
+            "checks": [
+                {
+                    "kind": "clearance",
+                    "check_id": "route-clearance",
+                    "proposal": {
+                        "origin": [4.0, 1.8, 2.6],
+                        "angle": 0.0,
+                        "extents": [3.0, 0.4, 0.4],
+                    },
+                    "required_clearance": 0.05,
+                    "confidence": 0.95,
+                    "position_sigma": 0.02,
+                    "label": "crossing duct",
+                }
+            ],
+        },
+    }
+
+
+class DecisionOverlayTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        from gat.headless import handle_request
+
+        cls.world = GatSession.load_ifc(MODEL).world
+        cls.request = clearance_request()
+        cls.response = handle_request(cls.request)
+
+    def test_reject_paints_only_uncleared_elements_and_draws_proposal(self) -> None:
+        from gat.geometry.viewer import decision_overlay
+
+        overlay = decision_overlay(self.world, self.response, self.request)
+        self.assertEqual(overlay["disposition"], "REJECT")
+        self.assertEqual(overlay["color"], "#d91414")
+        self.assertEqual(overlay["subjects"], ["Wall-Party"])
+        self.assertGreater(len(overlay["risks"]), 1)
+        self.assertEqual(len(overlay["proposals"]), 1)
+        self.assertEqual(overlay["proposals"][0]["extents"], [3.0, 0.4, 0.4])
+        self.assertIn("This report does not authorize any action.", overlay["footers"])
+
+    def test_overlay_without_request_has_no_proposals(self) -> None:
+        from gat.geometry.viewer import decision_overlay
+
+        overlay = decision_overlay(self.world, self.response)
+        self.assertEqual(overlay["proposals"], [])
+        self.assertEqual(overlay["subjects"], ["Wall-Party"])
+
+    def test_decision_from_another_world_is_refused(self) -> None:
+        from gat.geometry.viewer import decision_overlay
+
+        other = GatSession.load_ifc(
+            os.path.join(os.path.dirname(gat.demo.__file__), "beam_model.ifc")
+        ).world
+        with self.assertRaisesRegex(ValueError, "different world"):
+            decision_overlay(other, self.response, self.request)
+
+    def test_mismatched_request_is_refused(self) -> None:
+        from gat.geometry.viewer import decision_overlay
+
+        with self.assertRaisesRegex(ValueError, "ids differ"):
+            decision_overlay(self.world, self.response, clearance_request("other"))
+
+    def test_non_decision_documents_are_refused(self) -> None:
+        from gat.geometry.viewer import decision_overlay
+        from gat.headless import handle_request
+
+        summary = handle_request({**self.request, "operation": "summary", "payload": {}})
+        with self.assertRaisesRegex(ValueError, "render decisions"):
+            decision_overlay(self.world, summary)
+
+    def test_beam_decision_binds_through_its_prior_world(self) -> None:
+        from gat.geometry.viewer import decision_overlay
+        from gat.headless import handle_request
+
+        beam_model = os.path.join(os.path.dirname(gat.demo.__file__), "beam_model.ifc")
+        response = handle_request(
+            {
+                "format": "gat-headless-request-v1",
+                "request_id": "beam-view",
+                "operation": "beam_assurance",
+                "state": {"kind": "ifc", "path": beam_model},
+                "payload": {
+                    "case_id": "beam-b1-certificate",
+                    "beam_name": "Beam-B1",
+                    "factored_demand_n_m": 301_000.0,
+                    "confidence": 0.95,
+                    "material_certificate_path": os.path.join(
+                        os.path.dirname(gat.demo.__file__), "material_certificate.json"
+                    ),
+                },
+            }
+        )
+        overlay = decision_overlay(GatSession.load_ifc(beam_model).world, response)
+        self.assertEqual(overlay["disposition"], "VIOLATED")
+        self.assertEqual(overlay["subjects"], ["Beam-B1"])
+
+    def test_cli_embeds_the_overlay(self) -> None:
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            request_path = os.path.join(tmp, "request.json")
+            response_path = os.path.join(tmp, "response.json")
+            with open(request_path, "w", encoding="utf-8") as handle:
+                json.dump(self.request, handle)
+            with open(response_path, "w", encoding="utf-8") as handle:
+                json.dump(self.response, handle)
+            out = os.path.join(tmp, "viewer.html")
+            self.assertEqual(
+                cli_main(
+                    ["view", MODEL, "-o", out, "--variations", "1",
+                     "--decision", response_path, "--request", request_path]
+                ),
+                0,
+            )
+            with open(out, encoding="utf-8") as handle:
+                html = handle.read()
+            self.assertIn('"disposition":"REJECT"', html)
+            self.assertIn("Wall-Party", html)
+            self.assertEqual(cli_main(["view", MODEL, "-o", out, "--request", request_path]), 2)
+
+
 class ViewerHtmlTests(unittest.TestCase):
     def test_html_is_self_contained_and_offline(self) -> None:
         world = GatSession.load_ifc(MODEL).world
