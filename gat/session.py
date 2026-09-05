@@ -12,6 +12,8 @@ the session sequences it and records evidence.
 
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
 from typing import Mapping
 
 from gat.adapters.ifc.lower import lower_ifc
@@ -39,12 +41,17 @@ from gat.ids import EntityId, VarId
 from gat.ledger import ExecutionLedger, LedgerEvent, write_ledger
 from gat.state_snapshot import read_snapshot, write_snapshot
 from gat.trace import ExecutionTrace
+from gat.source_identity import bind_source_content, validate_identity_version
 
 
 class GatSession:
-    def __init__(self, world: World, source_file: IfcFile | None = None):
+    def __init__(
+        self, world: World, source_file: IfcFile | None = None,
+        *, source_locator: str | None = None,
+    ):
         self.world = world
         self.source_file = source_file
+        self.source_locator = source_locator
         self.trace = ExecutionTrace()
         self.imported_trace: list = []
         self.ledger = ExecutionLedger.genesis(world)
@@ -53,7 +60,8 @@ class GatSession:
         report = run_invariants(world)
         self.trace.add(
             "compile",
-            world.module.meta.get("source", "<module>"),
+            source_locator if source_locator is not None
+            else world.module.meta.get("source", "<module>"),
             f"{len(world.module.entities)} entities, "
             f"{world.binding.n_raw} raw + {world.binding.n_full - world.binding.n_raw} derived vars",
             _verdict(report),
@@ -64,16 +72,33 @@ class GatSession:
     # -- constructors ------------------------------------------------------
 
     @classmethod
-    def load_ifc(cls, path: str) -> "GatSession":
-        file = parse_ifc_file(path)
-        module = lower_ifc(file, source=path)
-        return cls(World.compile(module), file)
+    def load_ifc(cls, path: str, *, identity_version: int = 2) -> "GatSession":
+        """Import exact IFC bytes; use version 1 only for legacy path binding."""
+        validate_identity_version(identity_version)
+        if identity_version == 1:
+            file = parse_ifc_file(path)
+            return cls(
+                World.compile(lower_ifc(file, source=path)), file,
+                source_locator=str(path),
+            )
+        raw = Path(path).read_bytes()
+        return cls._from_ifc_bytes(raw, str(path), identity_version)
 
     @classmethod
-    def from_text(cls, text: str, source: str = "<memory>") -> "GatSession":
-        file = parse_ifc(text)
+    def from_text(
+        cls, text: str, source: str = "<memory>", *, identity_version: int = 2,
+    ) -> "GatSession":
+        """Import a string, binding its exact UTF-8 encoding as source bytes."""
+        validate_identity_version(identity_version)
+        return cls._from_ifc_bytes(text.encode("utf-8"), source, identity_version)
+
+    @classmethod
+    def _from_ifc_bytes(cls, raw: bytes, source: str, identity_version: int) -> "GatSession":
+        file = parse_ifc(raw.decode("utf-8"))
         module = lower_ifc(file, source=source)
-        return cls(World.compile(module), file)
+        if identity_version == 2:
+            module = bind_source_content(module, hashlib.sha256(raw).hexdigest())
+        return cls(World.compile(module), file, source_locator=source)
 
     @classmethod
     def load_snapshot(cls, path: str) -> "GatSession":
