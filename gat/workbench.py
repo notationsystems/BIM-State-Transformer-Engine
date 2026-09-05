@@ -178,12 +178,15 @@ def projection_specs(
             source=f"gat view scene ({VIEWER_SCENE_FORMAT}) derived from the world"
             + (", with the bound decision overlay" if decision_bound else ""),
             transformation="oriented boxes -> moment-matched Gaussian tiles -> k-sigma "
-            "ellipsoids; N realizations drawn from N(mu, Sigma) with the stated seed",
+            "ellipsoids; N realizations drawn from N(mu, Sigma) with the stated seed; "
+            "EXPLODE displaces pieces along the IR hierarchy (a reading offset with "
+            "leader lines, never a position)",
             meaning="the belief's marginal geometry and correlated sampled realizations; "
-            "a painted colour is a verdict only under a bound decision",
+            "a painted colour is a verdict only under a bound decision; an outline in "
+            "an audit status colour marks what the corpus could not fully represent",
             loss="cross-element covariance appears only through sampled realizations, "
             "never as a shape; placements are exact metadata, not belief; tiles "
-            "approximate boxes",
+            "approximate boxes; exploded positions carry no information",
             identity="EntityId per element; world digest per scene",
             frame=model_frame,
             time=one_world + "; realizations are draws, not moments in time",
@@ -402,6 +405,7 @@ def workbench_payload(
     ledger: DecisionReport | None = None,
     audit: DecisionReport | None = None,
     audit_reason: str = "",
+    audit_statuses: Mapping[str, str] | None = None,
 ) -> dict[str, object]:
     """The instrument's data: specs, the STRUCTURE scene, GRAPH, STATE.
 
@@ -415,8 +419,16 @@ def workbench_payload(
     if decision_report is not None and decision is not None:
         if decision_report.disposition != decision["disposition"]:
             raise ValueError("decision report and overlay disagree on the disposition")
+    if audit_statuses is not None and audit is None:
+        raise ValueError("audit statuses come from the bound audit; bind both or neither")
     scene = viewer_payload(
-        world, n=n, seed=seed, spacing=spacing, model_name=model_name, decision=decision
+        world,
+        n=n,
+        seed=seed,
+        spacing=spacing,
+        model_name=model_name,
+        decision=decision,
+        audit_statuses=audit_statuses,
     )
     specs = projection_specs(
         world,
@@ -622,6 +634,7 @@ def export_workbench_html(
     ledger: DecisionReport | None = None,
     audit: DecisionReport | None = None,
     audit_reason: str = "",
+    audit_statuses: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Write the instrument; returns each mode's availability."""
     payload = workbench_payload(
@@ -635,6 +648,7 @@ def export_workbench_html(
         ledger=ledger,
         audit=audit,
         audit_reason=audit_reason,
+        audit_statuses=audit_statuses,
     )
     document = render_workbench_html(
         payload, decision_report=decision_report, ledger=ledger, audit=audit

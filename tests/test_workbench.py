@@ -336,6 +336,17 @@ class WorkbenchDocumentTests(unittest.TestCase):
         self.assertIn('data-mode="TIME" class="empty"', html)
         self.assertIn("no decision bound", html)
 
+    def test_structure_scene_carries_audit_statuses_only_with_the_audit(self) -> None:
+        from gat.geometry.viewer import audit_statuses
+        from gat.ifc_audit import audit_ifc_file
+
+        statuses = audit_statuses(audit_ifc_file(MODEL).to_dict())
+        payload = workbench_payload(self.world, n=0, audit=self.audit, audit_statuses=statuses)
+        self.assertEqual(payload["structure"]["audit"]["matched"], 8)
+        self.assertIn("EXPLODE", payload["modes"][2]["transformation"])
+        with self.assertRaisesRegex(ValueError, "bind both or neither"):
+            workbench_payload(self.world, n=0, audit_statuses=statuses)
+
     def test_untrusted_names_are_escaped(self) -> None:
         payload = json.loads(json.dumps(workbench_payload(self.world, n=0)))
         payload["model"] = "<img src=x onerror=alert(1)>"
@@ -370,6 +381,7 @@ class WorkbenchCliTests(unittest.TestCase):
             self.assertIn('"disposition":"REJECT"', html)
             self.assertIn("hash chain verified", html)
             self.assertIn("gat-ifc-audit-v1", html)
+            self.assertIn("&quot;audit&quot;:{&quot;status&quot;:&quot;READY&quot;", html)
             self.assertNotIn("No decision is bound", html)
             # --request without --decision has nothing to bind: refused
             self.assertEqual(

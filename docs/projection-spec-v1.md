@@ -27,7 +27,7 @@ which modes it *cannot* fill and why, instead of faking them.
 |---|---|---|---|---|
 | MAP | kepler.gl — analytical geography | Where is the pattern? | instrument | **unavailable** — no coordinate reference system is lowered into the IR |
 | GLOBE | CesiumJS — geodetic reality | Where does it exist? | connected instrument (not yet defined) | **unavailable** — no geodetic datum; tiles would need the network |
-| STRUCTURE | Three.js seat — computational structure | How is it constituted? | instrument | `gat view` embedded (self-contained WebGL renderer) |
+| STRUCTURE | Three.js seat — computational structure | How is it constituted? | instrument | `gat view` embedded (self-contained WebGL renderer), with the EXPLODE reading offset and per-piece audit outlines |
 | GRAPH | IR relationship graph `G` | What relates to what, on whose authority? | instrument | deterministic reading-order layout, typed edges, IFC source references |
 | STATE | IR entities `X` over `N(mu, Sigma)` | What is believed, and how surely? | instrument | per-entity quantities: mean ± sigma, raw or derived, provenance |
 | TIME | execution ledger | What happened, in what order, did the chain hold? | report | `gat ledger` timeline, chain verified before drawing |
@@ -111,6 +111,25 @@ Every message carries `format: "gat-workbench-message-v1"`. Receivers check
 the format, the source window, and the world digest before acting, and
 drop anything else silently. No message mutates state on either side:
 selection is a view property, not a model property.
+
+## Exploded views are reading offsets
+
+STRUCTURE can pull the asset apart. The displacement of each piece is
+derived from the relationship graph (radially from the plan centroid; an
+opening with the wall it voids, a door with the opening it fills, one step
+further each; spaces lifted), scaled by a slider, and drawn with leader
+lines back to the assembled place. It is declared in the mode's
+`transformation` and `loss`, stated on the inspection card ("drawn N m from
+its place for reading; not a position"), and never written anywhere: the
+scene, the world and the carrier are untouched. The same rule would hold
+for an OpenUSD expression of the exploded layout — a variant or
+time-sampled transforms over the derived view, never over `/GAT/State`.
+
+Audit statuses ride along per piece, bound by GlobalId from a
+`gat-ifc-audit-v1` document and refused if the vocabulary is unknown. A
+piece the corpus could not fully represent is outlined in its status
+colour; its fill keeps the identity hue, because an audit status describes
+the corpus, not a verdict on the asset.
 
 ## Rules that hold in every mode
 
