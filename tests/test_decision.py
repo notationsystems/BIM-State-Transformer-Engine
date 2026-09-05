@@ -80,6 +80,36 @@ class DecisionTests(unittest.TestCase):
         self.assertGreater(plan.selected.net_epistemic_value, 0.0)
         self.assertEqual(plan.options[0], plan.selected)
 
+    def test_unresolved_decision_without_candidates_returns_a_plan(self) -> None:
+        decision = MinimumDecision(self.volume, minimum=60.0, confidence=0.95)
+        digest_before = self.session.world.digest()
+        for candidates in ([], (), iter(())):
+            with self.subTest(container=type(candidates).__name__):
+                plan = plan_decision_evidence(
+                    self.session.world, decision, candidates
+                )
+                self.assertEqual(plan.assessment.verdict, DecisionVerdict.UNRESOLVED)
+                self.assertEqual(
+                    plan.disposition, EvidenceDisposition.NO_AVAILABLE_EVIDENCE
+                )
+                self.assertEqual(plan.options, ())
+                self.assertIsNone(plan.selected)
+                self.assertFalse(plan.should_observe)
+                self.assertIn("next=NO_AVAILABLE_EVIDENCE", plan.render())
+                self.assertEqual(plan.assessment.world_digest, digest_before)
+                self.assertEqual(self.session.world.digest(), digest_before)
+
+    def test_one_shot_candidates_are_not_consumed_by_availability_check(self) -> None:
+        decision = MinimumDecision(self.volume, minimum=60.0, confidence=0.95)
+        candidate = ObservationCandidate(self.volume, 0.05, cost_nats=0.10)
+        plan = plan_decision_evidence(
+            self.session.world, decision, (item for item in [candidate])
+        )
+        self.assertEqual(plan.disposition, EvidenceDisposition.OBSERVE)
+        self.assertEqual(len(plan.options), 1)
+        self.assertIsNotNone(plan.selected)
+        self.assertEqual(plan.selected.candidate, candidate)
+
     def test_observation_is_declined_when_burden_exceeds_information(self) -> None:
         decision = MinimumDecision(self.volume, minimum=60.0, confidence=0.95)
         plan = plan_decision_evidence(
