@@ -218,6 +218,9 @@ assurance flags render `no` in plain sight and audit statuses like
   `MISSING_SOURCE_DATA`, `BLOCKED`) is *outlined* in its status colour
   while its fill keeps the identity hue, because an audit status describes
   the corpus, not a verdict on the asset. `READY` pieces carry no outline.
+  The meta line states the frame the scene is drawn in (id, units, up
+  axis, CRS or none, and the engine's placement-uncertainty limit) from
+  the stated frame record; see `docs/projection-spec-v1.md`, *Frames*.
 * `gat workbench model.ifc -o workbench.html [--decision … --request … --ledger … --no-audit]`
   — the Notation Workbench: the eight modes above behind one toolbar
   (keys 1–8), the viewer embedded in a sandboxed frame as STRUCTURE, the

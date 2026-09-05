@@ -71,7 +71,10 @@ def explode_offsets(world: World, scene) -> list[list[float]]:
         return []
     stack = np.stack(list(centers.values()))
     centroid = stack.mean(axis=0)
-    span = float(max(np.ptp(stack[:, 0]), np.ptp(stack[:, 1]), 1.0))
+    # Plan span as twice the largest centre-to-centroid distance: invariant
+    # under rotation and translation of the frame, linear in the unit.
+    radial = np.hypot(stack[:, 0] - centroid[0], stack[:, 1] - centroid[1])
+    span = float(max(2.0 * radial.max(), 1.0))
     host = {rel.source: rel.target for rel in world.module.rels if rel.kind in _HOST_KINDS}
     offsets: list[list[float]] = []
     for element in scene.elements:
@@ -91,6 +94,35 @@ def explode_offsets(world: World, scene) -> list[list[float]]:
             [round(float(unit[0] * reach), 4), round(float(unit[1] * reach), 4), round(lift, 4)]
         )
     return offsets
+
+
+def frame_record(world: World) -> dict[str, object]:
+    """The coordinate frame every projection here draws in, stated not assumed.
+
+    Read from what the adapter recorded: the IFC length unit and its scale
+    to metres come from the module metadata; the placement convention is the
+    lowering's (corner-origin box, yaw about +Z); the viewer renders
+    right-handed, Z up, in metres — the convention the OpenUSD carrier also
+    declares.  Placements are exact metadata in this engine release, so the
+    belief carries dimensions only; that limit is stated here, not hidden.
+    Changing a display frame is never evidence.
+    """
+    meta = world.module.meta
+    scale = meta.get("ifc_length_scale_to_metres")
+    return {
+        "id": "model",
+        "parent": None,
+        "transform": None,
+        "units": "m",
+        "source_unit": meta.get("ifc_length_unit"),
+        "scale_to_metres": None if scale is None else float(scale),
+        "up": "+Z",
+        "handedness": "right",
+        "crs": None,
+        "convention": "IFC local placement lowered to a corner-origin box with yaw about +Z",
+        "uncertainty": "dimensions only; placements are exact metadata in this engine release",
+        "adapter": meta.get("adapter"),
+    }
 
 
 def audit_statuses(document: Mapping[str, object]) -> dict[str, str]:
@@ -333,6 +365,7 @@ def viewer_payload(
         "format": VIEWER_SCENE_FORMAT,
         "model": model_name,
         "world_digest": world.digest(),
+        "frame": frame_record(world),
         "seed": seed,
         "spacing": spacing,
         "classes": classes,
@@ -716,7 +749,11 @@ const state = {
 };
 const meta = document.getElementById("meta");
 meta.textContent = (SCENE.model ? SCENE.model + " | " : "") +
-  "world " + SCENE.world_digest.slice(0, 12) + "... | seed " + SCENE.seed;
+  "world " + SCENE.world_digest.slice(0, 12) + "... | seed " + SCENE.seed +
+  " | frame " + SCENE.frame.id + " (" + SCENE.frame.units + ", " + SCENE.frame.up + " up, " +
+  (SCENE.frame.crs === null ? "no CRS" : SCENE.frame.crs) + "; " + SCENE.frame.uncertainty + ")";
+meta.title = SCENE.frame.convention + "; source unit " + SCENE.frame.source_unit +
+  " x " + SCENE.frame.scale_to_metres + " -> m";
 
 if (DECISION) {
   const card = document.getElementById("decision");
@@ -1130,6 +1167,7 @@ __all__ = [
     "decision_overlay",
     "explode_offsets",
     "export_viewer_html",
+    "frame_record",
     "render_viewer_html",
     "viewer_payload",
 ]

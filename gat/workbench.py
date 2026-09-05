@@ -42,6 +42,7 @@ from typing import Mapping
 from gat.engine.executor import World
 from gat.geometry.viewer import (
     VIEWER_SCENE_FORMAT,
+    frame_record,
     render_viewer_html,
     viewer_payload,
 )
@@ -136,7 +137,15 @@ def projection_specs(
         "presented as evidence."
     )
     one_world = "one belief state, named by its world digest"
-    model_frame = "model frame: IFC local placement in metres, Z up; no geodetic frame"
+    frame = frame_record(world)
+    model_frame = (
+        f"{frame['id']} frame: {frame['convention']}; {frame['units']}, {frame['up']} up, "
+        f"{frame['handedness']}-handed; no geodetic frame (CRS none); {frame['uncertainty']}"
+    )
+    ir_units = (
+        f"IR units as lowered: source unit {frame['source_unit']} x "
+        f"{frame['scale_to_metres']} -> m (m, m2, m3, cur)"
+    )
     return (
         ProjectionSpec(
             mode="MAP",
@@ -224,7 +233,7 @@ def projection_specs(
             loss="correlations between quantities are not shown (marginals only); "
             "rounding at six significant digits",
             identity="EntityId plus quantity name (VarId)",
-            frame="IR units as lowered (m, m2, m3, cur)",
+            frame=ir_units,
             time=one_world,
             availability=AVAILABLE,
             reason="",
@@ -384,6 +393,7 @@ def state_payload(world: World) -> dict[str, object]:
     meta = dict(module.meta)
     return {
         "world_digest": world.digest(),
+        "frame": frame_record(world),
         "entities": entities,
         "raw": len(module.raw_vars()),
         "derived": len(module.derived_vars()),
@@ -580,6 +590,7 @@ def render_workbench_html(
         for mode in MODES
     )
     decision = payload["decision"]
+    frame = payload["state"]["frame"]
     decision_badge = (
         f'<span class="badge" style="background:{disposition_hex(decision["disposition"])}">'
         f"{esc(decision['disposition'])}</span> {esc(decision['headline'].split(': ', 1)[-1])}"
@@ -603,6 +614,9 @@ def render_workbench_html(
         '<div id="identity">'
         f'<span class="cell">{title}</span>'
         f'<span class="cell">world {_digest(payload["world_digest"])}</span>'
+        f'<span class="cell" title="{esc(frame["convention"])}">frame {esc(frame["id"])} '
+        f'({esc(frame["units"])}, {esc(frame["up"])} up, '
+        f'{"no CRS" if frame["crs"] is None else esc(str(frame["crs"]))})</span>'
         f'<span class="cell" id="decision-cell">{decision_badge}</span>'
         '<span class="cell" id="selection-cell"><span class="muted">nothing selected</span></span>'
         "</div>\n"
