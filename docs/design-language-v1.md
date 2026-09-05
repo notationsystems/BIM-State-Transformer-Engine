@@ -135,7 +135,13 @@ never silently.
   and one chip per realization whose dot carries the signal palette for
   its invariant verdict. Element hues are identity colours (muted
   architectural neutrals), never signal colours; the geometry on screen
-  *is* the uncertainty, so no synthetic "error bars" are drawn.
+  *is* the uncertainty, so no synthetic "error bars" are drawn. Clicking
+  an element inspects it — name, class, and each extent as realized in the
+  current sample beside its nominal mean ± sigma, with fixed (non-belief)
+  axes labelled as such — and outlines its realized box in ink, always
+  visible. Under a sampled realization the nominal belief is ghosted in
+  grey so drift is legible; preset views (iso, top, front, side, reset)
+  keep orientation cheap.
 * `gat view … --decision response.json [--request request.json]` — the
   decision overlay. The response is bound to the loaded model fail-closed:
   its world digest (for beam assurance, its prior-world digest) must equal

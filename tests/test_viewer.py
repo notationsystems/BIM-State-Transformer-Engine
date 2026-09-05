@@ -48,6 +48,21 @@ class ViewerPayloadTests(unittest.TestCase):
             for index in sample["element"]:
                 self.assertLess(index, len(self.payload["elements"]))
 
+    def test_elements_carry_boxes_quantities_and_sigmas(self) -> None:
+        by_name = {element["name"]: element for element in self.payload["elements"]}
+        wall = by_name["Wall-Party"]
+        self.assertEqual(wall["quantities"], ["Length", "Width", "Height"])
+        self.assertEqual(len(wall["box"]["extents"]), 3)
+        self.assertTrue(all(sigma > 0 for sigma in wall["extents_sigma"]))
+        door = by_name["Door-1"]
+        self.assertIsNone(door["quantities"][1])
+        self.assertIsNone(door["extents_sigma"][1])
+        for sample in self.payload["samples"]:
+            self.assertEqual(len(sample["boxes"]), 7 * len(self.payload["elements"]))
+        nominal = self.payload["samples"][0]["boxes"]
+        index = self.payload["elements"].index(wall)
+        self.assertEqual(nominal[index * 7 + 4 : index * 7 + 7], wall["box"]["extents"])
+
     def test_payload_is_deterministic(self) -> None:
         again = viewer_payload(self.world, n=3, seed=7, model_name="model.ifc")
         self.assertEqual(self.payload, again)
