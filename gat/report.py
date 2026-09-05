@@ -407,6 +407,8 @@ def _acceptance_report(
 
     check_rows: list[tuple[str, ...]] = []
     accents: list[str] = []
+    risk_rows: list[tuple[str, ...]] = []
+    risk_accents: list[str] = []
     for item in _array(result.get("checks"), "checks"):
         check = _object(item, "check")
         verdict = _string(check.get("verdict"), "check.verdict")
@@ -430,6 +432,26 @@ def _acceptance_report(
             )
         )
         accents.append(verdict)
+        # Per-element clearance risks, when the check carries them.  An
+        # element the case could not clear at its confidence takes the
+        # check's own verdict as its accent — the same rule the viewer uses
+        # to paint decision subjects.
+        details = check.get("details")
+        risks = details.get("risks") if isinstance(details, Mapping) else None
+        for risk in _array(risks, "check.details.risks") if risks is not None else ():
+            risk = _object(risk, "risk")
+            p_violates = _number(risk.get("p_violates"), "risk.p_violates")
+            mean = _number(risk.get("clearance_mean"), "risk.clearance_mean")
+            sigma = _number(risk.get("clearance_sigma"), "risk.clearance_sigma")
+            risk_rows.append(
+                (
+                    _string(risk.get("element"), "risk.element"),
+                    _string(check.get("check_id"), "check.check_id"),
+                    f"{mean:.3f} +- {sigma:.3f} m",
+                    format_probability(p_violates),
+                )
+            )
+            risk_accents.append(verdict if p_violates > 1.0 - confidence else "")
 
     request_rows: list[tuple[str, ...]] = []
     for item in _array(result.get("evidence_requests"), "evidence_requests"):
@@ -464,6 +486,15 @@ def _acceptance_report(
             tuple(accents),
         ),
     ]
+    if risk_rows:
+        blocks.append(
+            Table(
+                "element risks",
+                ("element", "check", "clearance", "P(violates)"),
+                tuple(risk_rows),
+                tuple(risk_accents),
+            )
+        )
     if request_rows:
         blocks.append(
             Table(
@@ -1040,6 +1071,26 @@ def render_html(report: DecisionReport) -> str:
         '<meta name="color-scheme" content="light dark">',
         f"<title>GAT decision report: {esc(report.subject)}</title>",
         f"<style>{_HTML_STYLE}</style></head><body><main>",
+    ]
+    parts.extend(_html_body_parts(report))
+    parts[-1] += "</main></body></html>"
+    return "\n".join(parts) + "\n"
+
+
+def render_html_fragment(report: DecisionReport) -> str:
+    """The report's body markup alone — banner, notes, blocks, footer.
+
+    For hosts that compose several reports into one page (the Workbench)
+    and carry the report stylesheet themselves.  Byte-identical to the body
+    of :func:`render_html`, so a composed report reads exactly like the
+    standalone page.
+    """
+    return "\n".join(_html_body_parts(report))
+
+
+def _html_body_parts(report: DecisionReport) -> list[str]:
+    esc = html_mod.escape
+    parts = [
         f'<header class="banner" style="background:{disposition_hex(report.disposition)}">',
         f"<h1>{esc(report.disposition)}</h1>",
         f"<p>{esc(report.subject)}</p>",
@@ -1092,8 +1143,8 @@ def render_html(report: DecisionReport) -> str:
             f"<p>request <code>{esc(report.request_id)}</code> · "
             f"world {_html_value(report.world_digest)}</p>"
         )
-    parts.append("</footer></main></body></html>")
-    return "\n".join(parts) + "\n"
+    parts.append("</footer>")
+    return parts
 
 
 def _html_value(value: str) -> str:

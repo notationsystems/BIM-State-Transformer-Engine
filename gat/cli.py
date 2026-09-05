@@ -94,15 +94,20 @@ def _run_report(args: argparse.Namespace) -> int:
     return 1 if report.operation == "error" else 0
 
 
-def _run_view(args: argparse.Namespace) -> int:
-    from gat.geometry.viewer import decision_overlay, export_viewer_html
+def _bind_decision(command: str, args: argparse.Namespace):
+    """Load the model and bind an optional headless decision to it, fail-closed.
+
+    Returns ``(session, model_path, decision, request, response)``; the
+    decision overlay is ``None`` when no ``--decision`` was given.
+    """
+    from gat.geometry.viewer import decision_overlay
 
     model_path = args.model
     decision = None
     request = None
+    response = None
     if args.request and not args.decision:
-        print("gat view: --request requires --decision", file=sys.stderr)
-        return 2
+        raise ValueError(f"{command}: --request requires --decision")
     if args.request:
         with open(args.request, "r", encoding="utf-8") as handle:
             request = json.load(handle)
@@ -127,9 +132,16 @@ def _run_view(args: argparse.Namespace) -> int:
                 raise ValueError(
                     f"{exc}; the world digest includes the model's path string, so "
                     "load it with the same path form the headless request used "
-                    "(or pass --request so gat view can match it)"
+                    f"(or pass --request so {command} can match it)"
                 ) from exc
             raise
+    return session, model_path, decision, request, response
+
+
+def _run_view(args: argparse.Namespace) -> int:
+    from gat.geometry.viewer import export_viewer_html
+
+    session, _, decision, _, _ = _bind_decision("gat view", args)
     count = export_viewer_html(
         session.world,
         args.output,
@@ -141,6 +153,51 @@ def _run_view(args: argparse.Namespace) -> int:
     )
     suffix = f" + decision {decision['disposition']}" if decision else ""
     print(f"wrote {args.output}: offline viewer with {count} realizations{suffix}")
+    return 0
+
+
+def _run_workbench(args: argparse.Namespace) -> int:
+    from gat.workbench import export_workbench_html
+
+    session, model_path, decision, _, response = _bind_decision("gat workbench", args)
+    decision_report = decode_response(response) if response is not None else None
+    ledger = decode_ledger(args.ledger) if args.ledger else None
+    audit = None
+    audit_reason = ""
+    if args.no_audit:
+        audit_reason = "The IFC audit was skipped (--no-audit)."
+    elif model_path.lower().endswith(".ifc"):
+        audit_document = audit_ifc_file(model_path)
+        if audit_document.world_digest not in (None, session.world.digest()):
+            raise ValueError(
+                "gat workbench: the audit lowered a different world than the model "
+                f"({audit_document.world_digest} != {session.world.digest()})"
+            )
+        audit = decode_response(audit_document.to_dict())
+    else:
+        suffix = Path(model_path).suffix or "(no extension)"
+        audit_reason = (
+            "The IFC audit applies to IFC sources; this model was loaded from "
+            f"a {suffix} carrier."
+        )
+    availability = export_workbench_html(
+        session.world,
+        args.output,
+        model_name=args.model,
+        n=args.variations,
+        seed=args.seed,
+        spacing=args.spacing,
+        decision=decision,
+        decision_report=decision_report,
+        ledger=ledger,
+        audit=audit,
+        audit_reason=audit_reason,
+    )
+    modes = ", ".join(
+        mode if state == "available" else f"{mode} ({state})"
+        for mode, state in availability.items()
+    )
+    print(f"wrote {args.output}: workbench with modes {modes}")
     return 0
 
 
@@ -470,6 +527,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="the matching gat-headless request; draws proposed clearance geometry",
     )
     p.set_defaults(handler=_run_view)
+
+    p = commands.add_parser(
+        "workbench",
+        help="the Notation Workbench: one offline instrument, eight projection modes",
+    )
+    p.add_argument("model")
+    p.add_argument("-o", "--output", required=True, help="workbench HTML path")
+    p.add_argument("--variations", type=int, default=8)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--spacing", type=float, default=0.75)
+    p.add_argument(
+        "--decision",
+        help="gat-headless response to bind (EVIDENCE mode + STRUCTURE overlay)",
+    )
+    p.add_argument(
+        "--request",
+        help="the matching gat-headless request; draws proposed clearance geometry",
+    )
+    p.add_argument("--ledger", help="execution ledger JSON to bind (TIME mode)")
+    p.add_argument(
+        "--no-audit",
+        action="store_true",
+        help="skip the IFC compatibility audit (COMPLEXITY mode stays empty)",
+    )
+    p.set_defaults(handler=_run_workbench)
 
     return parser
 

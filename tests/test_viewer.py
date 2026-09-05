@@ -63,6 +63,13 @@ class ViewerPayloadTests(unittest.TestCase):
         index = self.payload["elements"].index(wall)
         self.assertEqual(nominal[index * 7 + 4 : index * 7 + 7], wall["box"]["extents"])
 
+    def test_elements_carry_their_entity_ids(self) -> None:
+        by_name = {element["name"]: element for element in self.payload["elements"]}
+        self.assertEqual(by_name["Wall-Party"]["entity"], "IfcWall:GATWAL0000000000000180")
+        ids = [element["entity"] for element in self.payload["elements"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertTrue(all(":" in entity for entity in ids))
+
     def test_payload_is_deterministic(self) -> None:
         again = viewer_payload(self.world, n=3, seed=7, model_name="model.ifc")
         self.assertEqual(self.payload, again)
@@ -253,6 +260,16 @@ class ViewerHtmlTests(unittest.TestCase):
         self.assertNotIn("https://", html)
         self.assertIn(VIEWER_SCENE_FORMAT, html)
         self.assertIn("Read-only: no BIM state was changed.", html)
+
+    def test_viewer_speaks_the_workbench_message_contract(self) -> None:
+        from gat.geometry.viewer import render_viewer_html
+
+        world = GatSession.load_ifc(MODEL).world
+        html = render_viewer_html(viewer_payload(world, n=0))
+        self.assertIn('"gat-workbench-message-v1"', html)
+        for phrase in ('kind: "ready"', 'kind: "selection"', 'message.kind !== "select"',
+                       "message.world_digest !== SCENE.world_digest"):
+            self.assertIn(phrase, html)
 
     def test_cli_view_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
